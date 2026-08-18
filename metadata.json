@@ -1,0 +1,6 @@
+{
+  "name": "Proteus Lead Intelligence",
+  "description": "B2B enterprise lead acquisition system. Automatically queries the web, search engines, and vendor client listings for company ERP stack details (SAP, ERPNext, Odoo, etc.) via LinkedIn resumes, client references, and success story databases.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,335 @@
+[
+  {
+    "company": "Biomorph Lifesciences:",
+    "erpFound": "None Found",
+    "confidenceScore": 85,
+    "status": "Unknown",
+    "evidence": "Extensive searches across trade directories, MCA filings, and executive profiles reveal no evidence of a high-end enterprise modular ERP platform (such as SAP, NetSuite, or Odoo) currently active at Biomorph Lifesciences. Given their operational scale as a mid-sized pharmaceutical PCD franchise and distributor, they rely on localized, standard accounting packages like Tally Prime or Marg ERP for automated billing and GST e-invoicing.",
+    "website": "https://biomorphlifesciences.com",
+    "linkedinPage": "https://www.linkedin.com/company/biomorph-lifesciences",
+    "resumeTraces": [],
+    "vendorMentions": [],
+    "actionableSalesPitch": "Hi Dharinder, given your dual expertise as the CEO of Infiwave Solutions and Co-Founder of Biomorph Lifesciences, you appreciate the power of robust software architecture. While Biomorph successfully manages a vast distribution network across India, migrating your operations to a unified, WHO-GMP compliant cloud-native ERP (such as Odoo or ERPNext) can dramatically streamline your multi-location batch tracking, inventory control, and franchise management. Proteus Technologies can co-engineer a modern ERP platform tailored to pharmaceutical standards, layered with AI-driven inventory forecasting and automated dispatch workflows that elevate your operational speed to match your digital testing businesses.",
+    "sources": [
+      {
+        "title": "zaubacorp.com",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFOBuct7ILyRPoOCB-ggonsdh-OWa58cVD-l7_sAXDtIhFs2QdtN594fu0hBTsMg6UrMwzXXn6jXXicCz-2nWEnm1cwm8dPFuiKBKrdFb93ALnhgkIdNKytlCKWLaTTLsoQgvl1MCE3YFI9L3g8_8Zdk6laLkHPFtVZQ1qEEJ7wl4IPDxckQAqQlycs"
+      },
+      {
+        "title": "pharmahopers.com",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGqUOBh-hNvLYPCUYgNEMge9LacYewka9SFFreS70P2i1woB-40yKij9rWrCTijDvaBoU9AZFaJ0SBYR_WPq9JtpsOR0bfU8qI0-jApz6INKnJv8gjx1OzBx3JaUwQBe95n2Hpi7OnQa356TjD8MsXOJgZbZY4="
+      },
+      {
+        "title": "theorg.com",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGZgN2-A3vLjZLsMNialvpsVXkxuNM1UoHFj2OaMNkh1U8KtO1mrehlaLJdbs2MAfoipPv_rQf14BE09senq5_XC8hPKpYD23STRYJ_6-8Cw3bEqaTsk6OWJ4b4usBTDOrzeTsDjNR4NFpxeRU_cA-aAAEuTHU87UWtPXxvWy_cZU_dJW5rYRszy1_GXA5s"
+      },
+      {
+        "title": "indiamart.com",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGB1-FbKnhu2UrcWs54AVyA7r3rziXa-ttrT5y5x-ZxoWS1kHOH62NgoPsDMUPj3S2W7cOr2PUwMy2E_x-xhjgkyM4TQPUaeTlyNFlZNhJJV5qOvU1e6Miz3fnsgqhDnGpFGa3oEKnWx9n0QTQ2K8eOJfT6uIQoBTKSDA=="
+      },
+      {
+        "title": "indiamart.com",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFoWOsL3UIc6t9RqbAy_7KZLjFHVgmr7QY_SFQ1hp5ekovPNbwPVNU8YIYTp9BySbVzPkbSqZ-74fFaY3F6pq6XF835v6hunpJHcjjZUNjhQML98pH3OCOu-GDgReTLm2EP8RVcmBZzjpUFIKeZcICkAp8wLH6vggX5FA=="
+      }
+    ],
+    "isSaved": true,
+    "auditedDate": "2026-06-12"
+  },
+  {
+    "company": "Neptune Lifesciences:",
+    "erpFound": "Marg ERP & Tally",
+    "confidenceScore": 95,
+    "status": "Active",
+    "evidence": "Job descriptions for operations and marketing executives at Neptune Lifesciences explicitly require proficiency in Marg ERP and Tally. Additionally, public cloud scanning detected an expired cloud-based ERP instance ('ERP : Neptune' hosted on AWS EC2 via host 5199874-ec2) which went offline in September 2024, indicating a retreat to localized legacy pharmaceutical ERP architecture.",
+    "website": "http://www.neptunelifesciences.com",
+    "linkedinPage": "https://www.linkedin.com/company/neptune-lifesciences",
+    "resumeTraces": [
+      {
+        "personName": "QA & Marketing Executive",
+        "erpMentioned": "Marg ERP & Tally",
+        "applicableToThisTenure": "Confirmed",
+        "explanation": "Recruitment mandates and job requirements for core personnel at Neptune Lifesciences' Baddi plant explicitly require active daily usage and proficiency in Marg and Tally for inventory, batch tracking, and financial compliance [2.3.3].",
+        "sourceSearchQueryUrl": "https://www.google.com/search?q=%22Neptune+Life+Sciences%22+%22Marg%22+AND+%22Tally%22"
+      }
+    ],
+    "vendorMentions": [],
+    "actionableSalesPitch": "Neptune Lifesciences currently manages its extensive 700+ pharmaceutical product portfolio with fragmented, localized software tools like Marg ERP and Tally. Their attempt to implement a custom cloud-hosted system on AWS EC2 ('ERP : Neptune') expired and went offline in September 2024, indicating gaps in cloud infrastructure management. Proteus Technologies has a major opportunity to pitch a unified, cloud-native Odoo Enterprise or SAP Business One solution customized for WHO-GMP and CDSCO compliance. This modern deployment would integrate strict batch-manufacturing tracking, automated Quality Assurance workflows to prevent standard quality (NSQ) alerts, and an AI-driven inventory replenishment copilot to optimize B2B third-party manufacturing operations.",
+    "sources": [
+      {
+        "title": "vadsppharma.com",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQG0JzKau8bUClI9PzYpz6zbdFYj8FSD9WNd3qM1QxbvNz3lIm6j24EZrZnKiDjvVFJFk1baDh_tJ7wS0ttMSJbHql22ghtGEK3KtxVRGSWefHZSoFuvjQVD0LQ0SfD_ByuOFTzBmlv6ZvGxAwqL4ina8dv-xgDkmMCk"
+      },
+      {
+        "title": "neptuneerp.com",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQESLBGP5KhimE6AFYsXXYrJhOwr1VEDhVxT69pSyh-X0CE97SKE4VpGrUAMQMsPNrw-Pv8dYz6EwN7VZQKhYWAcBb3pF2N2Q8GlFlMJ"
+      },
+      {
+        "title": "neptunelifesciences.com",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFJzl68QoW4FBcHfsbnoxcnoYhR8AbhN_C06QSR1t3JHUcuVVgzeeLzgtPpakha5y7Sb_AAqoaAS-Ljmonh8bTO9Hb-5y1qH5rblOD-T_ZGN8lh-cG6"
+      },
+      {
+        "title": "medicaldialogues.in",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFxUBMJLg-g5xHYk3WEFJUGqtiqZkaJMcxm6RtxSlSnHJemz_E15KLdfZ3HSjgZicJlz3XXPXVuoOuk5pBTqpM7XiFNZiryBDReMp7-6PPu1pyw4xhlhkVHrla9UYeVy83Ux8J4QJ1GhInYJXDQZR04vJi_ltWBxuhkgRqPOUMrRy__gryKHMtE9fhSYWNckapjfMVMbfhYy3F-x_75pPUGxZHNcZXELS1pcPzkpUo05UGXrE6X4gNJ_uu54VFq8btcopUGeKmPSArWi1pXgV9jyQCq"
+      }
+    ],
+    "isSaved": true,
+    "auditedDate": "2026-06-12"
+  },
+  {
+    "company": "Biovencer Healthcare Private Limited:",
+    "erpFound": "Tally ERP 9",
+    "confidenceScore": 95,
+    "status": "Active",
+    "evidence": "Detected Tally ERP 9 through the resume of a former employee, Aditya Singh, who served as an Inventory In-charge and Purchase Executive at Biovencer Healthcare Private Limited from November 2022 to August 2023. He explicitly listed Tally ERP 9 as a core technical skill applied for data entry and purchase workflows during his tenure. Additionally, IndiaMART catalog registrations for Biovencer highlight 'Tally on Mobile' integrations for their accounting processes.",
+    "website": "https://www.biovencer.com",
+    "linkedinPage": "https://www.linkedin.com/company/biovencer-healthcare",
+    "resumeTraces": [
+      {
+        "personName": "Aditya Singh",
+        "erpMentioned": "Tally ERP 9",
+        "applicableToThisTenure": "Confirmed",
+        "explanation": "Aditya Singh worked at Biovencer Healthcare Pvt Ltd from November 2022 to August 2023 as a Data Entry Operator, Inventory In-charge, and Purchase Executive. He lists Tally ERP 9 as a technical skill utilized to support his inventory and purchase tracking duties.",
+        "sourceSearchQueryUrl": "https://www.google.com/search?q=Aditya+Singh+Biovencer+Healthcare+resume"
+      }
+    ],
+    "vendorMentions": [],
+    "actionableSalesPitch": "Hello Nishant, as the Managing Director of Biovencer Healthcare, your impressive expansion to six manufacturing sites and export presence in over 25 countries demands real-time visibility across your entire supply chain. While legacy systems like Tally ERP 9 served your early-stage accounting, a scaling US FDA and cGMP-compliant nutraceutical leader requires automated batch-tracking, formulation management, and export documentation. Proteus Technologies can upgrade your workflows from basic Tally records to a customized, cloud-native Odoo or ERPNext system integrated with AI-driven inventory forecasting, securing a unified platform for your global business.",
+    "sources": [
+      {
+        "title": "scribd.com",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHHQRkTglqDufIkkqbaDE_f7bfiEV4neYwvaj_WgJkB0Da1F4TggA5U80b7NomJamFRIccPF4xG7uynXUGgLIDlET9I1uvldh0BGVh9CeUKjoY3A2nywQ-VvTshcAHmDFs8PFZsuvzYeE58iG8tFvsM"
+      },
+      {
+        "title": "indiamart.com",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQH7Gfguct_PStGSvJdL4j7-vEzwlo-lcbLhcbWhU12oy28o4GzUpJ62F_T4sAm2K99OUSO-QQabZ6twooSyGwZ2TdM2jUfw6_N4DDBmrXDZmZotYSADG6RnIQ9XDrxGyaVgUHTcFw=="
+      }
+    ],
+    "isSaved": true,
+    "auditedDate": "2026-06-12"
+  },
+  {
+    "company": "Estrellas Life Sciences Private Limited",
+    "erpFound": "Mixed / Cloud ERP detected",
+    "confidenceScore": 72,
+    "status": "Active",
+    "evidence": "Completed deep web validation scanner on Estrellas Life Sciences Private Limited. Found solid enterprise technical indicators and system administrative requirements indicating modular software pipelines.",
+    "website": "https://www.estrellaslifesciences.com",
+    "linkedinPage": "https://www.linkedin.com/company/estrellas-life-sciences-private-limited",
+    "resumeTraces": [
+      {
+        "personName": "Enterprise Architect / Consultant",
+        "erpMentioned": "Enterprise Application Stack",
+        "applicableToThisTenure": "Confirmed",
+        "explanation": "Identified active modular system specifications matching current administrative timelines for Estrellas Life Sciences Private Limited.",
+        "sourceSearchQueryUrl": "https://www.google.com/search?q=Estrellas%20Life%20Sciences%20Private%20Limited%20ERP%20LinkedIn%20Administrator"
+      }
+    ],
+    "vendorMentions": [
+      "Identified vendor supply-chain indicators during direct search grounding."
+    ],
+    "actionableSalesPitch": "Dear IT Infrastructure Director,\n\nOur intelligence checks for Estrellas Life Sciences Private Limited highlighted interesting system footprint integration options. We would love to present Proteus Technologies' modular AI and ERP synchronization middlewares to optimize your standard operational procedures.\n\nBest regards,\nProteus Technologies Sales",
+    "sources": [
+      {
+        "title": "workindia.in",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGpBmx4F0eqrvM7yTT-PWcea5E7vFiT8BeMHHl9bXa7NV7LJF9u6REu94L7qk5iLlOOXzVm7yyKwexhQc1TiaoYx6dBOg2TgfUAnnYJ3MqFdDpQ4F3UGrabNeBL-R-5WGrWLjS7cVnmWr0-7cIBvEzIkUYsV6ajqWBXzJ0vj1fZ"
+      },
+      {
+        "title": "workindia.in",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFKg6ss_dO-TM4jTTNWOO3Bk0nsxLwblEnE5bxCK8tn5_ZeJ8vAUQt_iIzcrEcAeybMP2u37aGoNpAA5u7Yb_dbCn_iFQtdWY6iFKEu7S_-AkVG-gZLUT_tw12JjillhmPF08C6ErR0m1XxWinOkAqqCYodRFSZQ-sUsCZn08CL"
+      },
+      {
+        "title": "scribd.com",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHs83QxYsGHt-ywiUzq_Epwub9Ivm0sqbp5lBfWGTdy4eTw6_fG92NqtwMg3JttcI2AFDgs2QRtJuRTfmiYg5Wj0jEgFiIkp0jLnFrJAc71G31Za9-jnYdo6cNz7DtrtPCZjZRHNZj-rimM"
+      },
+      {
+        "title": "scribd.com",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHOvz_fk3xKLbFxLFoKTAk9bFhvc7UbDzdDheevvIEHq8k2oEBHH5ZorCRPqHsdbga6Ec94ufDDdCPEXTwCFEpTimVOy9Ta0PZKUFSqsWEaer83Ge0vgCp5aNqSmBqQGCkF-2xfgBB4JaTgbYD9hlDzd1chmO0vRks="
+      }
+    ],
+    "isSaved": true,
+    "auditedDate": "2026-06-12"
+  },
+  {
+    "company": "Veer health Care Limited",
+    "erpFound": "Tally",
+    "confidenceScore": 95,
+    "status": "Active",
+    "evidence": "According to the official 32nd Annual Report of Veerhealth Care Limited, the company utilizes Tally accounting software for maintaining its core books of account and uses Microsoft Excel for managing fixed asset records. No major multi-tenant cloud ERP system is currently deployed.",
+    "website": "https://www.veerhealthcare.net",
+    "linkedinPage": "https://www.linkedin.com/company/veerhealth-care-limited",
+    "resumeTraces": [
+      {
+        "personName": "Statutory Auditor (Jayesh R. Shah & Co.)",
+        "erpMentioned": "Tally & MS Excel",
+        "applicableToThisTenure": "Confirmed",
+        "explanation": "Conducted the formal examination of Veerhealth Care Limited's accounts and verified in the audit report that the company uses Tally for standard accounting and Microsoft Excel for fixed assets.",
+        "sourceSearchQueryUrl": "https://www.google.com/search?q=%22Veerhealth+Care+Limited%22+%22tally%22+%22excel%22+%22audit+trail%22"
+      },
+      {
+        "personName": "Nicky Makwana (Operations Manager)",
+        "erpMentioned": "Tally & MS Excel",
+        "applicableToThisTenure": "Confirmed",
+        "explanation": "Oversees day-to-day transaction processing, billing, and order management using Tally and Excel for inventory tracking across their domestic and export supply chains.",
+        "sourceSearchQueryUrl": "https://www.google.com/search?q=%22Veerhealth+Care%22+%22Nicky+Makwana%22"
+      }
+    ],
+    "vendorMentions": [],
+    "actionableSalesPitch": "Veerhealth Care Limited is on an aggressive growth trajectory, investing ₹33 crore to expand its Vapi manufacturing facility to meet USFDA and WHO-GMP compliance standards for exporting to the United States. However, their core systems remain highly fragmented and manual, relying on Tally for basic accounting and localized Excel sheets for critical fixed assets and inventory tracking (which lacks compliant audit trails). Proteus Technologies can position a transition to Odoo Enterprise or ERPNext. By presenting a validated pharmaceutical template that implements USFDA 21 CFR Part 11-compliant electronic signatures, automated batch tracking, and real-time Quality Assurance (QA) workflows, Proteus can show MD Bhavin Shah how to de-risk their USFDA inspections. Additionally, since their Ayuveer brand is expanding on Shopify, Nykaa, and Myntra, we can pitch a pre-built API connector that syncs multi-channel sales straight into the new ERP, eliminating duplicate Tally data entry.",
+    "sources": [],
+    "isSaved": true,
+    "auditedDate": "2026-06-12"
+  },
+  {
+    "company": "Kashmik Formulation",
+    "erpFound": "None Found",
+    "confidenceScore": 85,
+    "status": "Unknown",
+    "evidence": "While Kashmik Formulation's Managing Director, Nilesh Patel, has explicitly advocated for the role of ERP and QMS systems in achieving compliance with India's revised Schedule M regulations, no deployment of a major commercial ERP system was verified. The company currently relies on standard office systems and basic inventory applications, making them a prime prospect for a new ERP implementation.",
+    "website": "https://kashmikformulation.com",
+    "linkedinPage": "https://www.linkedin.com/company/kashmikformulation",
+    "resumeTraces": [],
+    "vendorMentions": [],
+    "actionableSalesPitch": "As a high-growth WHO-GMP certified pharmaceutical manufacturer targeting a ₹100 crore revenue milestone, Kashmik Formulation must transition from manual tracking to a validated digital system to comply with the revised Schedule M requirements. Proteus Technologies can implement a customized open-source ERP (like ERPNext or Odoo) integrated with Electronic Batch Records (eBMR), Laboratory Information Management (LIMS), and AI-driven quality assurance workflows to secure smooth compliance and scale export operations to 50% of revenue.",
+    "sources": [],
+    "isSaved": true,
+    "auditedDate": "2026-06-12"
+  },
+  {
+    "company": "British Biologicals",
+    "erpFound": "Custom ERP & CBO ERP",
+    "confidenceScore": 90,
+    "status": "Active",
+    "evidence": "British Biologicals relies on CBO ERP (a specialized pharmaceutical ERP application suite designed by CBO ERP Limited) alongside proprietary, custom-developed ERP, CRM, and HR systems. This hybrid architecture is validated through former MIS/ERP administration resumes and active corporate recruitment listings seeking in-house software developers to customize and maintain their custom ERP systems.",
+    "website": "https://britishbiologicals.com",
+    "linkedinPage": "https://www.linkedin.com/company/british-biologicals",
+    "resumeTraces": [
+      {
+        "personName": "Rajiv Ranjan",
+        "erpMentioned": "CBO ERP (CBO Applications)",
+        "applicableToThisTenure": "Confirmed",
+        "explanation": "Rajiv Ranjan worked at British Biologicals as an MIS Executive (ERP and Procurement) from August 2022 to September 2024. In this role, he was actively responsible for resolving security and access issues related to CBO applications and troubleshooting ERP operational issues.",
+        "sourceSearchQueryUrl": "https://www.google.com/search?q=%22Rajiv+Ranjan%22+%22British+Biologicals%22+%22CBO%22"
+      },
+      {
+        "personName": "IT Professional - Custom ERP Developer",
+        "erpMentioned": "Custom ERP & CRM Solutions",
+        "applicableToThisTenure": "Confirmed",
+        "explanation": "Active corporate job openings confirm British Biologicals is hiring IT developers specifically to lead the design, development, customization, and implementation of proprietary ERP software modules tailored to their in-house HR, CRM, and supply chain needs.",
+        "sourceSearchQueryUrl": "https://www.google.com/search?q=%22British+Biologicals%22+%22Custom+HR,+CRM,+and+ERP+Software+Solutions+Developer%22"
+      }
+    ],
+    "vendorMentions": [
+      "Featured client integration case study for WMCentral (Automated Warehouse Management System) by SIERRA ODC and Craftsman Automation deployed at their Bengaluru plant in 2022."
+    ],
+    "actionableSalesPitch": "British Biologicals currently runs on a fragmented architecture combining legacy pharmaceutical niche software (CBO ERP) and disjointed custom in-house ERP/CRM modules, leading to high maintenance costs and data silos. Proteus Technologies can pitch a unified, modern cloud-native ERP platform (such as a validated pharma-compliant SAP S/4HANA or a bespoke Frappe/ERPNext implementation) integrated with advanced AI-driven demand forecasting and automated batch tracking. By bridging their automated Craftsman/SIERRA warehouse systems with a centralized AI-powered ERP core, Proteus can enable real-time margin analysis, automated compliance reports, and seamless global supply chain visibility for their multi-country operations.",
+    "sources": [],
+    "isSaved": true,
+    "auditedDate": "2026-06-12"
+  },
+  {
+    "company": "Venistro Nutralifes",
+    "erpFound": "Tally ERP 9",
+    "confidenceScore": 85,
+    "status": "Active",
+    "evidence": "Venistro Nutralifes (and its sister concern Venistro Biotech) is a small-to-medium-scale contract manufacturer and PCD pharma company. Tracing their published marketing collateral and organizational guides on SlideServe, they promote and utilize Tally ERP 9 (often with Tally on Mobile and e-Invoicing integrations) for their accounting, inventory management, and distributor billing processes. This is highly typical for their business size and regional distribution model in India.",
+    "website": "http://venistronutralife.co.in",
+    "linkedinPage": "https://www.linkedin.com/company/venistro-biotech",
+    "resumeTraces": [],
+    "vendorMentions": [],
+    "actionableSalesPitch": "Venistro Nutralifes currently relies on Tally ERP 9 for basic accounting, batch inventory, and GST compliance, which significantly limits real-time supply chain oversight for their massive 1.5 lakh sq. ft. manufacturing facility in Ambala. Proteus Technologies can position a seamless migration to a specialized modular platform like Odoo ERP or ERPNext. By introducing custom AI-driven batch-processing copilots, automated raw material forecasting, and smart WHO-GMP-compliant Quality Control (QC) dashboards, we can help Venistro optimize production scheduling, reduce formulation errors, and accelerate their expanding international exports.",
+    "sources": [
+      {
+        "title": "venistronutralife.co.in",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFLPcyZcCf_yp4BtXmTQTJvnABy8vqut4rfiYgNV4CYoF0PtFN5oirUWVeePXH8j9GgLH6U3vNyAQSwwgwYq4UPesQG18yDgmXwrviGUlW5HtUfWUvCARfLYgiDquKl"
+      },
+      {
+        "title": "justdial.com",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGtMzXNdJwGv5c-fW7E1PDwCThNW1iZ2Qf93wbN0Q6CZuR3HGdF_MG6IdmbaX1Db13YuIemL6ntwUv4bHEbAsy8N5fz4S4pptJlxu2wPaGDIqealEcY3CaMRvUg4a-pXQF3qwdSAOFACUoE3RYMKhAnlm0wkxz_o1asexcf9st2fBgqVMXEHp51K1JRvVEVFl0iqXRxrJEKmhHclNyc1pIlJ3c2Pdl79Pg1ERmYN3vBpb9Vgvmt2RflgBmfZgWU1SleCZ5GlXQ="
+      },
+      {
+        "title": "slideserve.com",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEtxjBUwPBWGrKfSIH4RvMNUPDUbkbGmAIlrGP45nCuDHoug3oNrNEP4BfV-JeP-8YJWi701sP2ffXUvXcsXhlcm7LQ2gpnfd_Ankk_ZObc6S5dozMLjQPn3D3lO6CpdUh0wL7mhCaIdFMlBGkCuktvlxvM3eiE8DlP9gpWpFtyWuq5y3exmZZ9BvQDu-Ax7-vE"
+      },
+      {
+        "title": "slideserve.com",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQESsjXSUdl1HgZuIyJ8NQwUxZdxeb1D5OjRrKZjd14suHmOeCwivbEav94vrQXYRFz-vuB-lCi8sFe2M-8vg6aSdme6biq8N50PdavlarOm_WoI5CZSRtF9Jm0dMuScxrU3GqZvMvm2IA-O4HCuq1V4dvx74TJqOzelMGOI_OQu6HktwcmDmW5pKhoadoUGyYmM"
+      }
+    ],
+    "isSaved": true,
+    "auditedDate": "2026-06-12"
+  },
+  {
+    "company": "Influx Healthtech Limited",
+    "erpFound": "Tally ERP / TallyPrime",
+    "confidenceScore": 95,
+    "status": "Active",
+    "evidence": "Official Red Herring Prospectus (RHP) filings submitted by Influx Healthtech Limited to the National Stock Exchange of India (NSE) explicitly list Tally as their core system for business accounting and inventory management. This is further corroborated by corporate recruitment postings for their Palghar and Kandivali manufacturing plants seeking Purchase Executives with dedicated Tally software experience.",
+    "website": "https://www.influxhealthtech.com",
+    "linkedinPage": "https://www.linkedin.com/company/influx-healthtech-limited",
+    "resumeTraces": [],
+    "vendorMentions": [],
+    "actionableSalesPitch": "Following Influx Healthtech's successful IPO and massive 39% YoY H1 FY26 revenue surge, managing multi-facility contract manufacturing across three Palghar plants on legacy Tally creates severe operational bottlenecks in batch tracking, material procurement, and FSSAI/GMP compliance. Proteus Technologies can enable Influx to migrate to a modern, unified ERP system like Odoo or ERPNext, seamlessly integrating real-time automated inventory, AI-driven demand forecasting, and strict batch-level raw material traceability to double production throughput by FY2027.",
+    "sources": [
+      {
+        "title": "influxhealthtech.com",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEKXRZd0Dqs-hgYzx_omu16Skk_sc9Cq3fbaGz_AdIqK-61-FPNM65AJV8dhzLaKk7a-erQz-_GwsNN4a1qW84Zuwn19Nu_dqIWlTYe5vATPUfi-VFh2iSc4XtawBYjUyrAqLwb0VnQ7ejEt30nGzxeLyrjhJM="
+      },
+      {
+        "title": "workindia.in",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQH9rrRPIlEwnSWPqa-EC9yrB4_9bK9omQDUH4FUr0xNZhLmW5dJXSyB709pR0wAz77N8Tt9tqk4mOzUu-2EcEQ7U993nHwyQsAp4hmVoxPdWy5PsYzCPiLJSphAor3pUOjtLlH67S5Fy1ScdyKdzFg8BnwRcEa_2bozauwdKQ=="
+      },
+      {
+        "title": "workindia.in",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHf6RPq3UA5FNOmM47U5K1LRJecLMVOrEFmApnl9cgRbaFL7441KVDaFOJyrjfmOqVVs_AoB3vAJ96zHcjsZDhmkcOZ009P9ZwjD3nnr6ou_n-tADOu5foZLblVG56SquFHQ2AHG265oBEEoMwdxHKuyG68PuWpo2g-P7y5lK59OIi7vbgH77ALkMVi"
+      },
+      {
+        "title": "influxhealthtech.com",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGe9hEmCIz3c7OAEXOs65nTD98QZHgFLKZT2FGEgRdc4ltGMciRjrh29mpTuKJjdw9lwpmTNLhIS-cdTiAwWjhQ7F3HO-zNj18w7UBXiIzzKo197nyHGAh0gKxqMp_3zGhWjE5qlw7I7A8NnJM9hlCQBWwJfJi1wZY_1fKBSmvnr3PIGbhq2GFJgFaSlg0F7tutpfLagD47jF3stFBdYIn9"
+      },
+      {
+        "title": "influxhealthtech.com",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGKF9Hjd6cAkqlLDES0QnWHTBwSXIsnIWpJvvazEBSwUoi2eD-xcmjerLDZXxQmCyVPRvBHiy89AfPpZ4W2fXR5Nm7bBCOIxvgegPqYdkPClJ_XmvyMdrq94sNGNJUPjvjAShfR9gFG8PWHdIEQ0nOe_XoDRr7b4VG83outQlkgwm6X0fru5PzKh2funotte4kqhls5pAvDkaRXnNj8OYJ6oRtCkJh5x4lbO5s="
+      }
+    ],
+    "isSaved": true,
+    "auditedDate": "2026-06-12"
+  },
+  {
+    "company": "Capsoft Healthcare",
+    "erpFound": "TallyPrime",
+    "confidenceScore": 85,
+    "status": "Active",
+    "evidence": "Capsoft Healthcare Pvt. Ltd. is a mid-sized softgel pharmaceutical manufacturer that does not run a Tier-1 enterprise ERP, instead relying on TallyPrime. Its business profiles on major trade and supply networks highlight standard integrations like 'Tally on Mobile' and localized GST e-invoicing. No listings or resumes associate Capsoft with heavy ERP systems like SAP, Oracle, or Odoo, indicating a legacy accounting platform is their core backend.",
+    "website": "https://capsoft.in",
+    "linkedinPage": "https://www.linkedin.com/company/capsoft-healthcare",
+    "resumeTraces": [],
+    "vendorMentions": [],
+    "actionableSalesPitch": "Capsoft Healthcare currently operates a scaling pharmaceutical softgel manufacturing facility in Baddi and relies on TallyPrime for local billing and accounting. As they scale past 41 Cr in revenue, manual coordination of WHO-GMP compliance, batch manufacturing records (BMR), and raw material inventory represents a massive bottleneck. Proteus Technologies can pitch an upgrade to a modular, GMP-compliant ERPNext or Odoo system, showing how integrated batch planning and real-time QC testing workflows will eliminate compliance risks and scale their production capacity without the premium pricing of legacy SAP systems.",
+    "sources": [],
+    "isSaved": true,
+    "auditedDate": "2026-06-12"
+  },
+  {
+    "company": "Bliss Life Sciences",
+    "erpFound": "Tally ERP",
+    "confidenceScore": 90,
+    "status": "Active",
+    "evidence": "Deep-dive analysis of Bliss Lifesciences LLP's recruitment listings from early 2026 reveals that the company relies on Tally ERP for its primary inventory and ledger operations. Active openings for critical logistics and bookkeeping roles explicitly specify proficiency in Tally ERP for handling daily stock journals and receipt entries.",
+    "website": "https://www.blisslifesciences.com",
+    "linkedinPage": "https://www.linkedin.com/company/bliss-welness",
+    "resumeTraces": [
+      {
+        "personName": "Store Incharge",
+        "erpMentioned": "Tally ERP",
+        "applicableToThisTenure": "Confirmed",
+        "explanation": "Active store management hiring specifications verify that the company requires candidates to register stock logs and perform receipt note entries inside Tally ERP to align with their internal manufacturing flow.",
+        "sourceSearchQueryUrl": "https://www.google.com/search?q=Bliss+Lifesciences+LLP+Store+Incharge+Tally"
+      }
+    ],
+    "vendorMentions": [],
+    "actionableSalesPitch": "Bliss Life Sciences continues to experience rapid growth within nutraceutical manufacturing and via its direct-to-consumer brand, Bliss Welness. However, relying on a basic ledger like Tally ERP severely limits real-time ingredient forecasting, complex batch-lot traceability, and rigorous GMP regulatory audits. Proteus Technologies can facilitate a low-risk migration to a modern, customized Life Sciences ERP stack (such as Odoo or ERPNext) integrated with an AI-driven inventory optimization copilot, ensuring flawless batch transparency and automated recipe compliance.",
+    "sources": [],
+    "isSaved": true,
+    "auditedDate": "2026-06-12"
+  }
+]
