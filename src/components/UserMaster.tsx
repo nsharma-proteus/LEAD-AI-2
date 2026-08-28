@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Trash2, Plus, Shield, Search, Loader2, CheckCircle2, AlertCircle, History, RefreshCw, KeyRound, Lock, UserCheck } from 'lucide-react';
+import { Users, Trash2, Plus, Shield, Search, Loader2, CheckCircle2, AlertCircle, History, RefreshCw, KeyRound, Lock, UserCheck, X, Check } from 'lucide-react';
 
 interface WhitelistEntry {
   id: number;
@@ -7,6 +7,7 @@ interface WhitelistEntry {
   role: string;
   createdAt: string;
   isRegistered?: boolean;
+  hasPasswordSet?: boolean;
 }
 
 interface AuthLogEntry {
@@ -38,6 +39,12 @@ export default function UserMaster({ idToken }: UserMasterProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [filterQuery, setFilterQuery] = useState('');
   const [logFilterQuery, setLogFilterQuery] = useState('');
+
+  // Set / Reset Password Modal states
+  const [passwordModalEmail, setPasswordModalEmail] = useState<string | null>(null);
+  const [customPassword, setCustomPassword] = useState('');
+  const [isSavingPassword, setIsSavingPassword] = useState(false);
+  const [passwordModalError, setPasswordModalError] = useState<string | null>(null);
 
   const fetchWhitelist = async () => {
     setIsLoading(true);
@@ -170,6 +177,53 @@ export default function UserMaster({ idToken }: UserMasterProps) {
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Failed to remove authorization.');
+    }
+  };
+
+  const handleOpenPasswordModal = (email: string) => {
+    setPasswordModalEmail(email);
+    setCustomPassword('');
+    setPasswordModalError(null);
+  };
+
+  const handleSaveUserPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passwordModalEmail) return;
+    if (!customPassword || customPassword.length < 6) {
+      setPasswordModalError('Password must be at least 6 characters long.');
+      return;
+    }
+
+    setIsSavingPassword(true);
+    setPasswordModalError(null);
+
+    try {
+      const res = await fetch('/api/admin/users/set-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
+        body: JSON.stringify({
+          email: passwordModalEmail,
+          password: customPassword
+        })
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to set user password.');
+      }
+
+      setSuccess(`Password for "${passwordModalEmail}" has been updated and securely stored in Cloud SQL!`);
+      setPasswordModalEmail(null);
+      setCustomPassword('');
+      fetchWhitelist();
+      fetchAuthLogs();
+    } catch (err: any) {
+      setPasswordModalError(err.message || 'Failed to update user password.');
+    } finally {
+      setIsSavingPassword(false);
     }
   };
 
@@ -431,14 +485,27 @@ export default function UserMaster({ idToken }: UserMasterProps) {
                             </span>
                           </td>
                           <td className="p-4 text-right pr-6">
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteUser(entry.id, entry.emailOrDomain)}
-                              title="Remove authorization rule"
-                              className="p-1 text-slate-500 hover:text-rose-400 bg-slate-900 hover:bg-rose-950/20 border border-slate-850 hover:border-rose-900/45 rounded-lg transition-colors cursor-pointer"
-                            >
-                              <Trash2 size={13} />
-                            </button>
+                            <div className="flex items-center justify-end gap-1.5">
+                              {!isDomain && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenPasswordModal(entry.emailOrDomain)}
+                                  title="Set / Reset User Password in Cloud SQL"
+                                  className="p-1 text-slate-400 hover:text-indigo-300 bg-slate-900 hover:bg-indigo-950/30 border border-slate-850 hover:border-indigo-800/50 rounded-lg transition-colors cursor-pointer flex items-center gap-1 px-2 text-[10px]"
+                                >
+                                  <KeyRound size={12} className="text-indigo-400" />
+                                  <span className="hidden sm:inline font-mono">Password</span>
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteUser(entry.id, entry.emailOrDomain)}
+                                title="Remove authorization rule"
+                                className="p-1 text-slate-500 hover:text-rose-400 bg-slate-900 hover:bg-rose-950/20 border border-slate-850 hover:border-rose-900/45 rounded-lg transition-colors cursor-pointer"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -535,6 +602,91 @@ export default function UserMaster({ idToken }: UserMasterProps) {
           </div>
         </div>
       </div>
+
+      {/* Password Management Modal */}
+      {passwordModalEmail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-slate-950 border border-slate-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden p-6 space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-850/80 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                  <KeyRound size={16} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-100">Set / Reset User Password</h3>
+                  <p className="text-[11px] font-mono text-slate-400">{passwordModalEmail}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPasswordModalEmail(null)}
+                className="text-slate-500 hover:text-slate-300 p-1 rounded-lg hover:bg-slate-900 transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {passwordModalError && (
+              <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs rounded-xl flex items-center gap-2 font-mono">
+                <AlertCircle size={14} className="shrink-0 text-rose-400" />
+                <span>{passwordModalError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveUserPassword} className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-mono font-medium text-slate-300 mb-1.5">
+                  New Password (Persistent in Cloud SQL)
+                </label>
+                <div className="relative">
+                  <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="password"
+                    value={customPassword}
+                    onChange={(e) => setCustomPassword(e.target.value)}
+                    placeholder="Enter new secure password (min 6 chars)"
+                    className="w-full bg-slate-900/90 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 font-mono"
+                    required
+                    minLength={6}
+                    autoFocus
+                  />
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1 font-mono">
+                  This writes the salted PBKDF2 hash directly to PostgreSQL and survives all container restarts.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setPasswordModalEmail(null)}
+                  disabled={isSavingPassword}
+                  className="px-4 py-2 text-xs font-mono font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-900 rounded-xl transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingPassword || customPassword.length < 6}
+                  className="px-4 py-2 text-xs font-mono font-bold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all shadow-lg shadow-indigo-950/50 flex items-center gap-2 cursor-pointer"
+                >
+                  {isSavingPassword ? (
+                    <>
+                      <Loader2 size={13} className="animate-spin" />
+                      <span>Saving to Cloud SQL...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check size={13} />
+                      <span>Save Password</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

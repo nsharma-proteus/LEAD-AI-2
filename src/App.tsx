@@ -34,7 +34,14 @@ import {
   CheckSquare,
   Upload,
   Download,
-  Wrench
+  Wrench,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  ArrowUpDown,
+  Filter,
+  SlidersHorizontal
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -232,6 +239,23 @@ export default function App() {
   const [isExecutingSql, setIsExecutingSql] = useState<boolean>(false);
   const [sqlError, setSqlError] = useState<string | null>(null);
 
+  // Pagination & Search & Sort states for SQL Reporting Query Results
+  const [sqlCurrentPage, setSqlCurrentPage] = useState<number>(1);
+  const [sqlPageSize, setSqlPageSize] = useState<number>(15);
+  const [sqlResultSearch, setSqlResultSearch] = useState<string>('');
+  const [sqlSortColumn, setSqlSortColumn] = useState<string | null>(null);
+  const [sqlSortDirection, setSqlSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [sqlJumpPage, setSqlJumpPage] = useState<string>('');
+
+  // Sub-view toggle & Pagination for Direct Cloud SQL Leads Table Inspector
+  const [reportsSubView, setReportsSubView] = useState<'sql' | 'table'>('sql');
+  const [dbTablePage, setDbTablePage] = useState<number>(1);
+  const [dbTablePageSize, setDbTablePageSize] = useState<number>(15);
+  const [dbTableSearch, setDbTableSearch] = useState<string>('');
+  const [dbTableErpFilter, setDbTableErpFilter] = useState<string>('All');
+  const [dbTableSortColumn, setDbTableSortColumn] = useState<string>('company');
+  const [dbTableSortDirection, setDbTableSortDirection] = useState<'asc' | 'desc'>('asc');
+
   const fetchDbLeads = async () => {
     setIsDbLoading(true);
     try {
@@ -255,6 +279,8 @@ export default function App() {
     setIsExecutingSql(true);
     setSqlError(null);
     setQueryResult(null);
+    setSqlCurrentPage(1);
+    setSqlResultSearch('');
     try {
       const res = await fetch('/api/db/run-sql', {
         method: 'POST',
@@ -273,6 +299,30 @@ export default function App() {
     } finally {
       setIsExecutingSql(false);
     }
+  };
+
+  const handleDownloadSqlResultsCsv = () => {
+    if (!queryResult || !queryResult.rows || queryResult.rows.length === 0) return;
+    const cols = queryResult.columns;
+    const headerRow = cols.map(c => `"${c.replace(/"/g, '""')}"`).join(',');
+    const dataRows = queryResult.rows.map(row => {
+      return cols.map(col => {
+        const val = row[col];
+        if (val === null || val === undefined) return '""';
+        const str = typeof val === 'object' ? JSON.stringify(val) : String(val);
+        return `"${str.replace(/"/g, '""')}"`;
+      }).join(',');
+    });
+    const csvContent = [headerRow, ...dataRows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `cloudsql_query_export_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleResetDb = async () => {
@@ -401,38 +451,36 @@ export default function App() {
     setRawAuthError(null);
     setAuthSuccessMessage(null);
 
-    // Perform direct corporate / whitelist session authentication
     try {
-      const checkRes = await fetch('/api/auth/check-whitelist', {
+      const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email, password: authPassword })
       });
-      const checkData = await checkRes.json().catch(() => ({}));
-      const userRole = checkData.role || ((email.toLowerCase().includes('nsharma') || email.toLowerCase().endsWith('@proteustech.in')) ? 'admin' : 'user');
-      
-      setSessionUser({
-        authorized: true,
-        role: userRole,
-        email: email,
-        uid: 'user-' + Date.now(),
-        name: email.split('@')[0] || 'User'
-      });
-      setAuthVerifyError(null);
-      setRawAuthError(null);
-      setAuthChecking(false);
-    } catch (fallbackErr) {
-      // Fallback corporate login
-      const userRole = (email.toLowerCase().includes('nsharma') || email.toLowerCase().endsWith('@proteustech.in')) ? 'admin' : 'user';
-      setSessionUser({
-        authorized: true,
-        role: userRole,
-        email: email,
-        uid: 'user-' + Date.now(),
-        name: email.split('@')[0] || 'User'
-      });
-      setAuthVerifyError(null);
-      setRawAuthError(null);
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.authorized) {
+        setSessionUser({
+          authorized: true,
+          role: data.role || 'user',
+          email: data.email || email,
+          uid: data.uid || ('user-' + Date.now()),
+          name: data.name || email.split('@')[0]
+        });
+        if (data.token) {
+          setAuthIdToken(data.token);
+        }
+        setAuthVerifyError(null);
+        setRawAuthError(null);
+      } else {
+        setAuthVerifyError(data.error || "Authentication failed: Invalid email or password.");
+        setRawAuthError(null);
+      }
+    } catch (err: any) {
+      setAuthVerifyError("Network or server error while authenticating. Please try again.");
+      setRawAuthError(err);
+    } finally {
       setAuthChecking(false);
     }
   };
@@ -459,18 +507,40 @@ export default function App() {
     setAuthChecking(true);
     setAuthVerifyError(null);
     setRawAuthError(null);
+    setAuthSuccessMessage(null);
 
-    const userRole = (email.toLowerCase().includes('nsharma') || email.toLowerCase().endsWith('@proteustech.in')) ? 'admin' : 'user';
-    setSessionUser({
-      authorized: true,
-      role: userRole,
-      email: email,
-      uid: 'user-' + Date.now(),
-      name: email.split('@')[0] || 'User'
-    });
-    setAuthVerifyError(null);
-    setRawAuthError(null);
-    setAuthChecking(false);
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: authPassword })
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.user?.authorized) {
+        setSessionUser({
+          authorized: true,
+          role: data.user.role || 'user',
+          email: data.user.email || email,
+          uid: data.user.uid || ('user-' + Date.now()),
+          name: data.user.name || email.split('@')[0]
+        });
+        if (data.user?.token) {
+          setAuthIdToken(data.user.token);
+        }
+        setAuthVerifyError(null);
+        setRawAuthError(null);
+      } else {
+        setAuthVerifyError(data.error || "Registration failed. Please check your details.");
+        setRawAuthError(null);
+      }
+    } catch (err: any) {
+      setAuthVerifyError("Network error during registration. Please try again.");
+      setRawAuthError(err);
+    } finally {
+      setAuthChecking(false);
+    }
   };
 
   // A helper function to verify a user session once they are authenticated
@@ -497,30 +567,14 @@ export default function App() {
           setSessionUser(verifiedData);
           setAuthVerifyError(null);
         } else {
-          // Automatic recovery for signed in corporate users
-          const email = user.email || 'nsharma@proteustech.in';
-          const userRole = (email.toLowerCase().includes('nsharma') || email.toLowerCase().endsWith('@proteustech.in')) ? 'admin' : 'user';
-          setSessionUser({
-            authorized: true,
-            role: userRole,
-            email: email,
-            uid: user.uid,
-            name: user.displayName || email.split('@')[0] || 'User'
-          });
-          setAuthVerifyError(null);
+          const errData = await verifyRes.json().catch(() => ({}));
+          setSessionUser(null);
+          setAuthVerifyError(errData.message || errData.error || "Your Google account is not authorized to access this platform. Please contact your administrator.");
         }
       } catch (verifyErr: any) {
         console.error("Auth verify error:", verifyErr);
-        const email = user.email || 'nsharma@proteustech.in';
-        const userRole = (email.toLowerCase().includes('nsharma') || email.toLowerCase().endsWith('@proteustech.in')) ? 'admin' : 'user';
-        setSessionUser({
-          authorized: true,
-          role: userRole,
-          email: email,
-          uid: user.uid,
-          name: user.displayName || email.split('@')[0] || 'User'
-        });
-        setAuthVerifyError(null);
+        setSessionUser(null);
+        setAuthVerifyError(verifyErr.message || "Failed to verify user session with the server.");
       }
     } else {
       setGoogleUser(null);
@@ -1427,28 +1481,6 @@ ${customPromptText ? `Custom search focus prompt: ${customPromptText}` : ''}
                 </button>
               </form>
 
-              {/* 1-Click Corporate Admin Sign In */}
-              <button
-                type="button"
-                onClick={() => {
-                  const email = authEmail.trim() || 'nsharma@proteustech.in';
-                  const role = (email.toLowerCase().includes('nsharma') || email.toLowerCase().endsWith('@proteustech.in')) ? 'admin' : 'user';
-                  setSessionUser({
-                    authorized: true,
-                    role: role,
-                    email: email,
-                    uid: 'user-admin-1',
-                    name: 'N Sharma (Admin)'
-                  });
-                  setAuthVerifyError(null);
-                  setRawAuthError(null);
-                }}
-                className="w-full py-3 bg-emerald-600 hover:bg-emerald-550 border border-emerald-500/40 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:translate-y-0.5 cursor-pointer"
-              >
-                <CheckSquare size={16} />
-                <span>Instant Sign In as Admin (nsharma@proteustech.in)</span>
-              </button>
-
               <div className="flex items-center gap-3">
                 <div className="h-[1px] bg-slate-800 flex-1" />
                 <span className="text-[10px] text-slate-600 font-mono">OR</span>
@@ -1630,13 +1662,13 @@ ${customPromptText ? `Custom search focus prompt: ${customPromptText}` : ''}
       </header>
 
       {/* Main workspace layout split - Left Form / Middle Results / Right Tuning Trainer */}
-      <div id="main-content-layout" className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden min-h-0 w-full">
+      <div id="main-content-layout" className="flex-1 min-h-0 w-full overflow-hidden flex flex-col">
         {activeMainTab === 'users' ? (
-          <div className="lg:col-span-12 h-full w-full overflow-y-auto p-2">
+          <div className="flex-1 min-h-0 h-full w-full overflow-y-auto p-4 md:p-6">
             <UserMaster idToken={authIdToken} />
           </div>
         ) : activeMainTab === 'reports' ? (
-          <div className="lg:col-span-12 p-6 bg-slate-900/10 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-full w-full">
+          <div className="flex-1 min-h-0 h-full w-full overflow-y-auto p-4 md:p-6 bg-slate-900/10 grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Left Sidebar Panel: Setup, Schema, Presets */}
             <div className="lg:col-span-4 space-y-6 flex flex-col justify-start">
               {/* DB HUD status card */}
@@ -1743,7 +1775,10 @@ ${customPromptText ? `Custom search focus prompt: ${customPromptText}` : ''}
 
                 <div className="space-y-2.5">
                   <button
-                    onClick={() => handleExecuteSql('SELECT company, erp_found, confidence_score, status FROM leads ORDER BY confidence_score DESC;')}
+                    onClick={() => {
+                      setReportsSubView('sql');
+                      handleExecuteSql('SELECT company, erp_found, confidence_score, status FROM leads ORDER BY confidence_score DESC;');
+                    }}
                     className="w-full text-left p-3 rounded-xl border border-slate-850 hover:border-slate-700 bg-slate-900/40 hover:bg-slate-900 transition-all flex items-start gap-2.5 group cursor-pointer"
                   >
                     <div className="p-1 bg-indigo-500/10 text-indigo-400 rounded-lg shrink-0 mt-0.5 group-hover:bg-indigo-500/20">
@@ -1756,7 +1791,10 @@ ${customPromptText ? `Custom search focus prompt: ${customPromptText}` : ''}
                   </button>
 
                   <button
-                    onClick={() => handleExecuteSql("SELECT company, contact_name, contact_title, contact_email, confidence_score FROM leads WHERE erp_found ILIKE '%sap%' AND confidence_score >= 80;")}
+                    onClick={() => {
+                      setReportsSubView('sql');
+                      handleExecuteSql("SELECT company, contact_name, contact_title, contact_email, confidence_score FROM leads WHERE erp_found ILIKE '%sap%' AND confidence_score >= 80;");
+                    }}
                     className="w-full text-left p-3 rounded-xl border border-slate-850 hover:border-slate-700 bg-slate-900/40 hover:bg-slate-900 transition-all flex items-start gap-2.5 group cursor-pointer"
                   >
                     <div className="p-1 bg-emerald-500/10 text-emerald-400 rounded-lg shrink-0 mt-0.5 group-hover:bg-emerald-500/20">
@@ -1769,7 +1807,10 @@ ${customPromptText ? `Custom search focus prompt: ${customPromptText}` : ''}
                   </button>
 
                   <button
-                    onClick={() => handleExecuteSql('SELECT erp_found, COUNT(*) as stack_count, ROUND(AVG(confidence_score), 1) as avg_score FROM leads GROUP BY erp_found ORDER BY stack_count DESC;')}
+                    onClick={() => {
+                      setReportsSubView('sql');
+                      handleExecuteSql('SELECT erp_found, COUNT(*) as stack_count, ROUND(AVG(confidence_score), 1) as avg_score FROM leads GROUP BY erp_found ORDER BY stack_count DESC;');
+                    }}
                     className="w-full text-left p-3 rounded-xl border border-slate-850 hover:border-slate-700 bg-slate-900/40 hover:bg-slate-900 transition-all flex items-start gap-2.5 group cursor-pointer"
                   >
                     <div className="p-1 bg-indigo-500/10 text-indigo-400 rounded-lg shrink-0 mt-0.5 group-hover:bg-indigo-500/20">
@@ -1782,7 +1823,10 @@ ${customPromptText ? `Custom search focus prompt: ${customPromptText}` : ''}
                   </button>
 
                   <button
-                    onClick={() => handleExecuteSql("SELECT company, contact_name, contact_email, status FROM leads WHERE contact_email IS NOT NULL AND contact_email <> '' ORDER BY id DESC;")}
+                    onClick={() => {
+                      setReportsSubView('sql');
+                      handleExecuteSql("SELECT company, contact_name, contact_email, status FROM leads WHERE contact_email IS NOT NULL AND contact_email <> '' ORDER BY id DESC;");
+                    }}
                     className="w-full text-left p-3 rounded-xl border border-slate-850 hover:border-slate-700 bg-slate-900/40 hover:bg-slate-900 transition-all flex items-start gap-2.5 group cursor-pointer"
                   >
                     <div className="p-1 bg-amber-500/10 text-amber-400 rounded-lg shrink-0 mt-0.5 group-hover:bg-amber-500/20">
@@ -1798,7 +1842,7 @@ ${customPromptText ? `Custom search focus prompt: ${customPromptText}` : ''}
             </div>
 
             {/* Right Main Analytics & SQL Playground Console */}
-            <div className="lg:col-span-8 space-y-6 flex flex-col justify-start">
+            <div className="lg:col-span-8 space-y-6 flex flex-col justify-start min-h-0">
               {/* 3 Stat card grid layout summarizing DB statistics */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 font-sans">
                 {/* Stat 1: SAP Leads ratio */}
@@ -1846,151 +1890,651 @@ ${customPromptText ? `Custom search focus prompt: ${customPromptText}` : ''}
                 </div>
               </div>
 
-              {/* SQL Playground/Console card */}
-              <div className="bg-slate-950 rounded-2xl border border-slate-800 shadow-2xl flex flex-col overflow-hidden min-h-[480px]">
-                {/* Console Header */}
-                <div className="bg-slate-950 border-b border-slate-800 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 font-sans">
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg">
-                      <Terminal size={14} />
-                    </div>
-                    <div>
-                      <h2 className="text-xs font-extrabold uppercase font-mono text-white tracking-widest">PostgreSQL SQL Query Playground</h2>
-                      <p className="text-[10px] text-slate-500 mt-0.5">Test real-time reports against Cloud SQL tables instantly</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-xs">
-                    <button
-                      onClick={() => handleExecuteSql()}
-                      disabled={isExecutingSql}
-                      className="py-2 px-4 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 text-white font-mono text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-emerald-950/20"
-                    >
-                      {isExecutingSql ? (
-                        <>
-                          <RefreshCw className="animate-spin" size={12} />
-                          <span>Executing query...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Play size={12} className="fill-white text-white" />
-                          <span>Execute SQL Query</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
+              {/* Console Sub-view Tab Switcher */}
+              <div className="flex items-center justify-between bg-slate-950 p-1.5 rounded-xl border border-slate-800 flex-wrap gap-2">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setReportsSubView('sql')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold font-mono flex items-center gap-1.5 transition-all cursor-pointer ${
+                      reportsSubView === 'sql'
+                        ? 'bg-emerald-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                    }`}
+                  >
+                    <Terminal size={13} />
+                    <span>SQL Query Playground</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setReportsSubView('table');
+                      fetchDbLeads();
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold font-mono flex items-center gap-1.5 transition-all cursor-pointer ${
+                      reportsSubView === 'table'
+                        ? 'bg-indigo-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                    }`}
+                  >
+                    <Table size={13} />
+                    <span>Direct Leads Table Inspector ({dbLeads.length})</span>
+                  </button>
                 </div>
 
-                {/* Console Input Textarea */}
-                <div className="p-5 border-b border-slate-900 bg-slate-950/65">
-                  <div className="relative rounded-xl border border-slate-800 p-3 bg-slate-900/60 font-mono text-[11px] leading-relaxed select-none">
-                    <span className="absolute left-3.5 top-3.5 text-emerald-400 select-none font-bold font-mono">postgres=&gt;</span>
-                    <textarea
-                      rows={4}
-                      value={sqlQuery}
-                      onChange={(e) => setSqlQuery(e.target.value)}
-                      className="w-full bg-transparent text-slate-200 outline-none pl-24 pr-3 py-0.5 font-mono resize-y overflow-y-auto leading-relaxed border-none focus:ring-0"
-                      placeholder="SELECT * FROM leads WHERE confidence_score > 80;"
-                    />
-                  </div>
-                  <div className="flex justify-between items-center text-[9px] font-mono text-slate-500 mt-2.5 tracking-wide px-1">
-                    <span>Enforced Security Mode: Only read-only queries (SELECT, WITH, EXPLAIN, SHOW) are authorized.</span>
-                    <span>Host: Cloud SQL Container Ingress</span>
-                  </div>
-                </div>
-
-                {/* Database Output Result Frame */}
-                <div className="flex-1 p-5 space-y-3 bg-slate-950/25">
-                  <div className="flex items-center justify-between border-b border-slate-850 pb-2">
-                    <h4 className="text-[10px] uppercase font-mono font-extrabold text-slate-400 tracking-wider flex items-center gap-1.5">
-                      <Table size={12} className="text-indigo-400" />
-                      SQL Execution Output Results
-                    </h4>
-                    <span className="text-[10px] font-mono text-slate-500">
-                      {queryResult ? `${queryResult.rows.length} rows returned` : 'No query executed yet'}
-                    </span>
-                  </div>
-
-                  {/* Render SQL Error Console */}
-                  {sqlError && (
-                    <div className="bg-rose-950/25 border border-rose-900/45 rounded-xl p-4 font-mono text-xs text-rose-300 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-                        <strong className="text-rose-200">Database Engine Error:</strong>
-                      </div>
-                      <p className="leading-relaxed bg-slate-950/40 p-2.5 rounded border border-rose-500/10 whitespace-pre-wrap">{sqlError}</p>
-                    </div>
-                  )}
-
-                  {/* Render Raw Query Result Grid */}
-                  {!sqlError && queryResult && (
-                    <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950">
-                      <div className="max-w-full overflow-x-auto overflow-y-auto max-h-72">
-                        <table className="w-full text-left border-collapse text-xs font-mono">
-                          <thead>
-                            <tr className="bg-slate-900 border-b border-slate-800 text-slate-400 text-[10px] uppercase font-mono tracking-wider">
-                              {queryResult.columns.map((col, cIdx) => (
-                                <th key={`col-header-${col}-${cIdx}`} className="p-3 font-semibold border-r border-slate-800 shrink-0">
-                                  {col}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-850 font-mono text-slate-300">
-                            {queryResult.rows.length === 0 ? (
-                              <tr>
-                                <td colSpan={queryResult.columns.length} className="p-6 text-center text-slate-550 italic font-mono bg-slate-900/10">
-                                  Result Table is Empty. No rows match your query criteria.
-                                </td>
-                              </tr>
-                            ) : (
-                              queryResult.rows.map((row, rIdx) => (
-                                <tr key={`row-${rIdx}`} className="hover:bg-slate-900/40 transition-colors">
-                                  {queryResult.columns.map((col, cIdx) => {
-                                    const val = row[col];
-                                    let displayText = '';
-                                    if (val === null || val === undefined) displayText = 'NULL';
-                                    else if (typeof val === 'object') displayText = JSON.stringify(val);
-                                    else displayText = String(val);
-                                    
-                                    return (
-                                      <td key={`cell-${rIdx}-${col}-${cIdx}`} className="p-3 border-r border-slate-850 whitespace-pre-line break-words max-w-xs text-[11px] leading-relaxed">
-                                        {displayText}
-                                      </td>
-                                    );
-                                  })}
-                                </tr>
-                              ))
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-
-                  {!sqlError && !queryResult && (
-                    <div className="flex flex-col items-center justify-center py-12 text-slate-550 space-y-2 border border-dashed border-slate-850/60 rounded-xl bg-slate-900/5 select-none">
-                      <Terminal size={22} className="text-slate-700 animate-pulse" />
-                      <p className="text-[11px] font-mono">Postgres reporting pipeline ready. Enter SQL and hit Execute to load raw relation views.</p>
-                    </div>
-                  )}
+                <div className="flex items-center gap-2 pr-2 text-[10px] font-mono text-slate-500">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Cloud SQL Active</span>
                 </div>
               </div>
+
+              {reportsSubView === 'sql' ? (
+                /* SQL Playground/Console card */
+                <div className="bg-slate-950 rounded-2xl border border-slate-800 shadow-2xl flex flex-col overflow-hidden min-h-[520px]">
+                  {/* Console Header */}
+                  <div className="bg-slate-950 border-b border-slate-800 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 font-sans">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg">
+                        <Terminal size={14} />
+                      </div>
+                      <div>
+                        <h2 className="text-xs font-extrabold uppercase font-mono text-white tracking-widest">PostgreSQL SQL Query Playground</h2>
+                        <p className="text-[10px] text-slate-500 mt-0.5">Test and paginate real-time queries against Cloud SQL tables</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs">
+                      {queryResult && queryResult.rows.length > 0 && (
+                        <button
+                          onClick={handleDownloadSqlResultsCsv}
+                          className="py-2 px-3 bg-slate-900 hover:bg-slate-850 text-emerald-400 border border-emerald-500/30 hover:border-emerald-500/50 font-mono text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
+                          title="Export query results to CSV file"
+                        >
+                          <Download size={12} />
+                          <span>Export CSV</span>
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleExecuteSql()}
+                        disabled={isExecutingSql}
+                        className="py-2 px-4 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 text-white font-mono text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-emerald-950/20"
+                      >
+                        {isExecutingSql ? (
+                          <>
+                            <RefreshCw className="animate-spin" size={12} />
+                            <span>Executing query...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Play size={12} className="fill-white text-white" />
+                            <span>Execute SQL Query</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Console Input Textarea */}
+                  <div className="p-5 border-b border-slate-900 bg-slate-950/65">
+                    <div className="relative rounded-xl border border-slate-800 p-3 bg-slate-900/60 font-mono text-[11px] leading-relaxed select-none">
+                      <span className="absolute left-3.5 top-3.5 text-emerald-400 select-none font-bold font-mono">postgres=&gt;</span>
+                      <textarea
+                        rows={3}
+                        value={sqlQuery}
+                        onChange={(e) => setSqlQuery(e.target.value)}
+                        className="w-full bg-transparent text-slate-200 outline-none pl-24 pr-3 py-0.5 font-mono resize-y overflow-y-auto leading-relaxed border-none focus:ring-0"
+                        placeholder="SELECT * FROM leads WHERE confidence_score > 80;"
+                      />
+                    </div>
+                    <div className="flex justify-between items-center text-[9px] font-mono text-slate-500 mt-2.5 tracking-wide px-1">
+                      <span>Enforced Security Mode: Only read-only queries (SELECT, WITH, EXPLAIN, SHOW) are authorized.</span>
+                      <span>Host: Cloud SQL Container Ingress</span>
+                    </div>
+                  </div>
+
+                  {/* Database Output Result Frame with Pagination */}
+                  <div className="flex-1 p-5 space-y-3 bg-slate-950/25 flex flex-col">
+                    {/* Render SQL Error Console */}
+                    {sqlError && (
+                      <div className="bg-rose-950/25 border border-rose-900/45 rounded-xl p-4 font-mono text-xs text-rose-300 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                          <strong className="text-rose-200">Database Engine Error:</strong>
+                        </div>
+                        <p className="leading-relaxed bg-slate-950/40 p-2.5 rounded border border-rose-500/10 whitespace-pre-wrap">{sqlError}</p>
+                      </div>
+                    )}
+
+                    {/* Render Raw Query Result Grid with Pagination controls */}
+                    {!sqlError && queryResult && (() => {
+                      // Compute filtered and sorted rows
+                      let rows = [...queryResult.rows];
+                      if (sqlResultSearch.trim()) {
+                        const q = sqlResultSearch.toLowerCase();
+                        rows = rows.filter(r => 
+                          Object.values(r).some(val => 
+                            val !== null && val !== undefined && String(typeof val === 'object' ? JSON.stringify(val) : val).toLowerCase().includes(q)
+                          )
+                        );
+                      }
+                      if (sqlSortColumn) {
+                        rows.sort((a, b) => {
+                          const valA = a[sqlSortColumn];
+                          const valB = b[sqlSortColumn];
+                          if (valA === valB) return 0;
+                          if (valA === null || valA === undefined) return 1;
+                          if (valB === null || valB === undefined) return -1;
+                          if (typeof valA === 'number' && typeof valB === 'number') {
+                            return sqlSortDirection === 'asc' ? valA - valB : valB - valA;
+                          }
+                          return sqlSortDirection === 'asc' 
+                            ? String(valA).localeCompare(String(valB)) 
+                            : String(valB).localeCompare(String(valA));
+                        });
+                      }
+
+                      const totalPages = Math.max(1, Math.ceil(rows.length / sqlPageSize));
+                      const safePage = Math.min(Math.max(1, sqlCurrentPage), totalPages);
+                      const startIdx = (safePage - 1) * sqlPageSize;
+                      const endIdx = Math.min(startIdx + sqlPageSize, rows.length);
+                      const paginatedRows = rows.slice(startIdx, endIdx);
+
+                      const getPageNumbers = () => {
+                        if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+                        if (safePage <= 4) return [1, 2, 3, 4, 5, '...', totalPages];
+                        if (safePage >= totalPages - 3) return [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+                        return [1, '...', safePage - 1, safePage, safePage + 1, '...', totalPages];
+                      };
+
+                      return (
+                        <div className="space-y-3 flex-1 flex flex-col">
+                          {/* Search & Filter Toolbar */}
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-900/50 p-3 rounded-xl border border-slate-800/80">
+                            <div className="relative flex-1 max-w-md">
+                              <Search className="absolute left-3 top-2.5 text-slate-500" size={13} />
+                              <input
+                                type="text"
+                                value={sqlResultSearch}
+                                onChange={(e) => {
+                                  setSqlResultSearch(e.target.value);
+                                  setSqlCurrentPage(1);
+                                }}
+                                placeholder="Filter query results by any value..."
+                                className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-600 outline-none font-mono"
+                              />
+                              {sqlResultSearch && (
+                                <button
+                                  onClick={() => {
+                                    setSqlResultSearch('');
+                                    setSqlCurrentPage(1);
+                                  }}
+                                  className="absolute right-2.5 top-2 text-slate-500 hover:text-slate-300 text-xs"
+                                >
+                                  ×
+                                </button>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-3 text-xs font-mono text-slate-400 self-end sm:self-auto">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[11px] text-slate-500">Rows per page:</span>
+                                <select
+                                  value={sqlPageSize}
+                                  onChange={(e) => {
+                                    setSqlPageSize(Number(e.target.value));
+                                    setSqlCurrentPage(1);
+                                  }}
+                                  className="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-lg px-2 py-1 outline-none font-mono cursor-pointer"
+                                >
+                                  {[10, 15, 25, 50, 100, 250, 500].map(sz => (
+                                    <option key={`pagesize-${sz}`} value={sz}>{sz}</option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              <span className="text-[11px] text-slate-500 hidden md:inline">
+                                {rows.length === queryResult.rows.length
+                                  ? `${rows.length} total rows`
+                                  : `${rows.length} of ${queryResult.rows.length} matched`}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Data Table */}
+                          <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950 flex-1">
+                            <div className="max-w-full overflow-x-auto overflow-y-auto max-h-[420px]">
+                              <table className="w-full text-left border-collapse text-xs font-mono">
+                                <thead className="sticky top-0 z-10">
+                                  <tr className="bg-slate-900 border-b border-slate-800 text-slate-400 text-[10px] uppercase font-mono tracking-wider">
+                                    <th className="p-3 font-semibold border-r border-slate-800 w-12 text-center text-slate-500">#</th>
+                                    {queryResult.columns.map((col, cIdx) => {
+                                      const isSorted = sqlSortColumn === col;
+                                      return (
+                                        <th
+                                          key={`col-header-${col}-${cIdx}`}
+                                          onClick={() => {
+                                            if (sqlSortColumn === col) {
+                                              setSqlSortDirection(sqlSortDirection === 'asc' ? 'desc' : 'asc');
+                                            } else {
+                                              setSqlSortColumn(col);
+                                              setSqlSortDirection('asc');
+                                            }
+                                          }}
+                                          className="p-3 font-semibold border-r border-slate-800 shrink-0 hover:bg-slate-850 hover:text-white cursor-pointer select-none transition-colors"
+                                          title={`Click to sort by ${col}`}
+                                        >
+                                          <div className="flex items-center justify-between gap-1.5">
+                                            <span>{col}</span>
+                                            <span className="text-indigo-400 text-[11px]">
+                                              {isSorted ? (sqlSortDirection === 'asc' ? '▲' : '▼') : <ArrowUpDown size={10} className="text-slate-600 opacity-60" />}
+                                            </span>
+                                          </div>
+                                        </th>
+                                      );
+                                    })}
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-850 font-mono text-slate-300">
+                                  {paginatedRows.length === 0 ? (
+                                    <tr>
+                                      <td colSpan={queryResult.columns.length + 1} className="p-8 text-center text-slate-500 italic font-mono bg-slate-900/10">
+                                        No rows match your current search criteria.
+                                      </td>
+                                    </tr>
+                                  ) : (
+                                    paginatedRows.map((row, rIdx) => {
+                                      const globalIdx = startIdx + rIdx + 1;
+                                      return (
+                                        <tr key={`row-${rIdx}`} className="hover:bg-slate-900/40 transition-colors">
+                                          <td className="p-3 border-r border-slate-850 text-center text-slate-600 text-[10px] select-none">
+                                            {globalIdx}
+                                          </td>
+                                          {queryResult.columns.map((col, cIdx) => {
+                                            const val = row[col];
+                                            let displayText = '';
+                                            if (val === null || val === undefined) displayText = 'NULL';
+                                            else if (typeof val === 'object') displayText = JSON.stringify(val);
+                                            else displayText = String(val);
+                                            
+                                            return (
+                                              <td key={`cell-${rIdx}-${col}-${cIdx}`} className="p-3 border-r border-slate-850 whitespace-pre-line break-words max-w-xs text-[11px] leading-relaxed">
+                                                {val === null || val === undefined ? (
+                                                  <span className="text-slate-600 italic">NULL</span>
+                                                ) : (
+                                                  displayText
+                                                )}
+                                              </td>
+                                            );
+                                          })}
+                                        </tr>
+                                      );
+                                    })
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+
+                          {/* Pagination Footer Controls */}
+                          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 bg-slate-950 border border-slate-800 rounded-xl font-mono text-xs text-slate-400">
+                            <div className="flex items-center gap-2">
+                              <span>
+                                Showing <strong className="text-white">{rows.length === 0 ? 0 : startIdx + 1}</strong> to <strong className="text-white">{endIdx}</strong> of <strong className="text-white">{rows.length}</strong> rows
+                              </span>
+                            </div>
+
+                            {totalPages > 1 && (
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <button
+                                  onClick={() => setSqlCurrentPage(1)}
+                                  disabled={safePage === 1}
+                                  className="p-1.5 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-slate-900 text-slate-300 transition-colors cursor-pointer"
+                                  title="First Page"
+                                >
+                                  <ChevronsLeft size={14} />
+                                </button>
+                                <button
+                                  onClick={() => setSqlCurrentPage(prev => Math.max(1, prev - 1))}
+                                  disabled={safePage === 1}
+                                  className="p-1.5 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-slate-900 text-slate-300 transition-colors cursor-pointer"
+                                  title="Previous Page"
+                                >
+                                  <ChevronLeft size={14} />
+                                </button>
+
+                                {getPageNumbers().map((p, pIdx) => {
+                                  if (p === '...') {
+                                    return <span key={`ellipsis-${pIdx}`} className="px-2 text-slate-600">...</span>;
+                                  }
+                                  const pageNum = Number(p);
+                                  const isCurrent = pageNum === safePage;
+                                  return (
+                                    <button
+                                      key={`sql-page-btn-${pageNum}`}
+                                      onClick={() => setSqlCurrentPage(pageNum)}
+                                      className={`min-w-[2rem] h-8 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                        isCurrent
+                                          ? 'bg-emerald-600 text-white shadow-md'
+                                          : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800'
+                                      }`}
+                                    >
+                                      {pageNum}
+                                    </button>
+                                  );
+                                })}
+
+                                <button
+                                  onClick={() => setSqlCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                  disabled={safePage === totalPages}
+                                  className="p-1.5 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-slate-900 text-slate-300 transition-colors cursor-pointer"
+                                  title="Next Page"
+                                >
+                                  <ChevronRight size={14} />
+                                </button>
+                                <button
+                                  onClick={() => setSqlCurrentPage(totalPages)}
+                                  disabled={safePage === totalPages}
+                                  className="p-1.5 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-slate-900 text-slate-300 transition-colors cursor-pointer"
+                                  title="Last Page"
+                                >
+                                  <ChevronsRight size={14} />
+                                </button>
+
+                                <div className="flex items-center gap-1 ml-2">
+                                  <span className="text-[11px] text-slate-500">Go to:</span>
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    max={totalPages}
+                                    value={sqlJumpPage}
+                                    onChange={(e) => setSqlJumpPage(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        const p = parseInt(sqlJumpPage);
+                                        if (!isNaN(p) && p >= 1 && p <= totalPages) {
+                                          setSqlCurrentPage(p);
+                                          setSqlJumpPage('');
+                                        }
+                                      }
+                                    }}
+                                    placeholder={`${safePage}`}
+                                    className="w-14 bg-slate-900 border border-slate-800 rounded px-1.5 py-1 text-center text-xs text-white outline-none"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {!sqlError && !queryResult && (
+                      <div className="flex flex-col items-center justify-center py-16 text-slate-550 space-y-3 border border-dashed border-slate-850/60 rounded-xl bg-slate-900/5 select-none my-auto">
+                        <Terminal size={26} className="text-slate-700 animate-pulse" />
+                        <p className="text-xs font-mono text-slate-400">PostgreSQL reporting pipeline ready.</p>
+                        <p className="text-[11px] font-mono text-slate-600 max-w-sm text-center">Execute any query above or select a preset template to load and paginate records from Cloud SQL.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                /* Direct Cloud SQL Leads Table Inspector with Pagination */
+                <div className="bg-slate-950 rounded-2xl border border-slate-800 shadow-2xl flex flex-col overflow-hidden min-h-[520px]">
+                  {/* Inspector Header */}
+                  <div className="bg-slate-950 border-b border-slate-800 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 font-sans">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-lg">
+                        <Database size={14} />
+                      </div>
+                      <div>
+                        <h2 className="text-xs font-extrabold uppercase font-mono text-white tracking-widest">Cloud SQL Leads Inspector</h2>
+                        <p className="text-[10px] text-slate-500 mt-0.5">Live browse and paginate through all stored customer intelligence records</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs">
+                      <button
+                        onClick={fetchDbLeads}
+                        disabled={isDbLoading}
+                        className="py-2 px-3 bg-slate-900 hover:bg-slate-850 text-slate-300 hover:text-white border border-slate-800 rounded-lg text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <RefreshCw size={12} className={isDbLoading ? 'animate-spin' : ''} />
+                        <span>Refresh Table</span>
+                      </button>
+                      <button
+                        onClick={() => handleDownloadCsv('leads')}
+                        disabled={isDownloadingCsv || dbLeads.length === 0}
+                        className="py-2 px-3 bg-indigo-600 hover:bg-indigo-500 text-white font-mono text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-indigo-950/20"
+                      >
+                        <Download size={12} />
+                        <span>Export All ({dbLeads.length})</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Inspector Body with Filters and Table */}
+                  <div className="flex-1 p-5 space-y-3 bg-slate-950/25 flex flex-col">
+                    {/* Filters Toolbar */}
+                    <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-slate-900/50 p-3 rounded-xl border border-slate-800/80">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-2.5 text-slate-500" size={13} />
+                        <input
+                          type="text"
+                          value={dbTableSearch}
+                          onChange={(e) => {
+                            setDbTableSearch(e.target.value);
+                            setDbTablePage(1);
+                          }}
+                          placeholder="Search company, ERP stack, contact name, or email..."
+                          className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-600 outline-none"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-850 text-xs">
+                          {["All", "SAP", "Odoo", "ERPNext", "Sohum ERP"].map((erp) => (
+                            <button
+                              key={`db-erp-pill-${erp}`}
+                              onClick={() => {
+                                setDbTableErpFilter(erp);
+                                setDbTablePage(1);
+                              }}
+                              className={`px-2 py-0.5 text-[10px] font-mono rounded transition-colors cursor-pointer ${
+                                dbTableErpFilter === erp
+                                  ? 'bg-indigo-600 text-white font-bold'
+                                  : 'text-slate-400 hover:text-slate-200'
+                              }`}
+                            >
+                              {erp}
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="flex items-center gap-1.5 text-xs font-mono">
+                          <span className="text-[11px] text-slate-500">Rows:</span>
+                          <select
+                            value={dbTablePageSize}
+                            onChange={(e) => {
+                              setDbTablePageSize(Number(e.target.value));
+                              setDbTablePage(1);
+                            }}
+                            className="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-lg px-2 py-1 outline-none font-mono cursor-pointer"
+                          >
+                            {[10, 15, 25, 50, 100, 250].map(sz => (
+                              <option key={`dbtablesz-${sz}`} value={sz}>{sz}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Table View */}
+                    {(() => {
+                      let list = [...dbLeads];
+                      if (dbTableErpFilter !== 'All') {
+                        list = list.filter(l => l.erpFound.toLowerCase().includes(dbTableErpFilter.toLowerCase()));
+                      }
+                      if (dbTableSearch.trim()) {
+                        const q = dbTableSearch.toLowerCase();
+                        list = list.filter(l => 
+                          l.company.toLowerCase().includes(q) ||
+                          l.erpFound.toLowerCase().includes(q) ||
+                          (l.status && l.status.toLowerCase().includes(q)) ||
+                          (l.cLevelContact?.name && l.cLevelContact.name.toLowerCase().includes(q)) ||
+                          (l.cLevelContact?.email && l.cLevelContact.email.toLowerCase().includes(q))
+                        );
+                      }
+
+                      const totalPages = Math.max(1, Math.ceil(list.length / dbTablePageSize));
+                      const safePage = Math.min(Math.max(1, dbTablePage), totalPages);
+                      const startIdx = (safePage - 1) * dbTablePageSize;
+                      const endIdx = Math.min(startIdx + dbTablePageSize, list.length);
+                      const paginatedList = list.slice(startIdx, endIdx);
+
+                      return (
+                        <div className="space-y-3 flex-1 flex flex-col">
+                          <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950 flex-1">
+                            <div className="max-w-full overflow-x-auto overflow-y-auto max-h-[420px]">
+                              <table className="w-full text-left border-collapse text-xs font-mono">
+                                <thead className="sticky top-0 z-10">
+                                  <tr className="bg-slate-900 border-b border-slate-800 text-slate-400 text-[10px] uppercase font-mono tracking-wider">
+                                    <th className="p-3 font-semibold border-r border-slate-800 w-12 text-center text-slate-500">#</th>
+                                    <th className="p-3 font-semibold border-r border-slate-800">Company</th>
+                                    <th className="p-3 font-semibold border-r border-slate-800">ERP Detected</th>
+                                    <th className="p-3 font-semibold border-r border-slate-800">Confidence</th>
+                                    <th className="p-3 font-semibold border-r border-slate-800">Status</th>
+                                    <th className="p-3 font-semibold border-r border-slate-800">Executive Contact</th>
+                                    <th className="p-3 font-semibold border-r border-slate-800">Email</th>
+                                    <th className="p-3 font-semibold">Verification</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-850 font-mono text-slate-300">
+                                  {paginatedList.length === 0 ? (
+                                    <tr>
+                                      <td colSpan={8} className="p-8 text-center text-slate-500 italic font-mono bg-slate-900/10">
+                                        No leads found matching your filter in Cloud SQL database.
+                                      </td>
+                                    </tr>
+                                  ) : (
+                                    paginatedList.map((lead, idx) => {
+                                      const globalIdx = startIdx + idx + 1;
+                                      return (
+                                        <tr key={`dblead-${lead.company}-${idx}`} className="hover:bg-slate-900/40 transition-colors">
+                                          <td className="p-3 border-r border-slate-850 text-center text-slate-600 text-[10px]">
+                                            {globalIdx}
+                                          </td>
+                                          <td className="p-3 border-r border-slate-850 font-bold text-white">
+                                            {lead.company}
+                                          </td>
+                                          <td className="p-3 border-r border-slate-850">
+                                            <span className="bg-indigo-950/40 text-indigo-300 text-[10px] px-2 py-0.5 rounded border border-indigo-500/20 font-bold">
+                                              {lead.erpFound}
+                                            </span>
+                                          </td>
+                                          <td className="p-3 border-r border-slate-850">
+                                            <span className={`font-bold ${lead.confidenceScore >= 80 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                              {lead.confidenceScore}%
+                                            </span>
+                                          </td>
+                                          <td className="p-3 border-r border-slate-850 text-slate-400 text-[11px]">
+                                            {lead.status || 'Active Target'}
+                                          </td>
+                                          <td className="p-3 border-r border-slate-850 text-[11px]">
+                                            {lead.cLevelContact?.name ? (
+                                              <div>
+                                                <span className="font-semibold text-slate-200">{lead.cLevelContact.name}</span>
+                                                {lead.cLevelContact.title && (
+                                                  <span className="block text-[10px] text-slate-500">{lead.cLevelContact.title}</span>
+                                                )}
+                                              </div>
+                                            ) : (
+                                              <span className="text-slate-600 italic">Not set</span>
+                                            )}
+                                          </td>
+                                          <td className="p-3 border-r border-slate-850 text-[11px] text-indigo-300">
+                                            {lead.cLevelContact?.email || <span className="text-slate-600 italic">Not set</span>}
+                                          </td>
+                                          <td className="p-3 text-[11px]">
+                                            {lead.isSaved ? (
+                                              <span className="text-emerald-400 font-bold flex items-center gap-1">
+                                                <CheckCircle2 size={12} /> Verified
+                                              </span>
+                                            ) : (
+                                              <span className="text-slate-500">Unverified</span>
+                                            )}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+
+                          {/* Pagination Footer */}
+                          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 bg-slate-950 border border-slate-800 rounded-xl font-mono text-xs text-slate-400">
+                            <div>
+                              Showing <strong className="text-white">{list.length === 0 ? 0 : startIdx + 1}</strong> to <strong className="text-white">{endIdx}</strong> of <strong className="text-white">{list.length}</strong> leads
+                            </div>
+
+                            {totalPages > 1 && (
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  onClick={() => setDbTablePage(1)}
+                                  disabled={safePage === 1}
+                                  className="p-1.5 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-slate-300 cursor-pointer"
+                                >
+                                  <ChevronsLeft size={14} />
+                                </button>
+                                <button
+                                  onClick={() => setDbTablePage(prev => Math.max(1, prev - 1))}
+                                  disabled={safePage === 1}
+                                  className="p-1.5 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-slate-300 cursor-pointer"
+                                >
+                                  <ChevronLeft size={14} />
+                                </button>
+                                <span className="px-3 py-1 bg-slate-900 border border-slate-800 rounded-lg text-xs font-bold text-white">
+                                  Page {safePage} of {totalPages}
+                                </span>
+                                <button
+                                  onClick={() => setDbTablePage(prev => Math.min(totalPages, prev + 1))}
+                                  disabled={safePage === totalPages}
+                                  className="p-1.5 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-slate-300 cursor-pointer"
+                                >
+                                  <ChevronRight size={14} />
+                                </button>
+                                <button
+                                  onClick={() => setDbTablePage(totalPages)}
+                                  disabled={safePage === totalPages}
+                                  className="p-1.5 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-slate-300 cursor-pointer"
+                                >
+                                  <ChevronsRight size={14} />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         ) : activeMainTab === 'tuning' ? (
-          <PromptTrainer
-            customDirectives={customDirectives}
-            setCustomDirectives={setCustomDirectives}
-            trainingExamples={trainingExamples}
-            setTrainingExamples={setTrainingExamples}
-            copiedIndex={copiedIndex}
-            handleCopyToClipboard={handleCopyToClipboard}
-          />
+          <div className="flex-1 min-h-0 h-full w-full overflow-y-auto p-4 md:p-6">
+            <PromptTrainer
+              customDirectives={customDirectives}
+              setCustomDirectives={setCustomDirectives}
+              trainingExamples={trainingExamples}
+              setTrainingExamples={setTrainingExamples}
+              copiedIndex={copiedIndex}
+              handleCopyToClipboard={handleCopyToClipboard}
+            />
+          </div>
         ) : (
-          <>
+          <div className="flex-1 min-h-0 h-full w-full grid grid-cols-1 lg:grid-cols-12 max-lg:overflow-y-auto">
             {/* Column 1: Left Side targeting controller panel (leads scan parameter settings) */}
-            <section id="targeting-controller" className="lg:col-span-3 p-5 border-r border-slate-800/80 bg-slate-950/20 flex flex-col gap-5 overflow-y-auto h-full">
+            <section id="targeting-controller" className="lg:col-span-3 p-5 border-r border-slate-800/80 bg-slate-950/20 flex flex-col gap-5 overflow-y-auto h-full min-h-0">
               <div className="border-b border-slate-800 pb-3">
                 <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
                   <Search size={13} className="text-indigo-400" />
@@ -3366,7 +3910,7 @@ ${customPromptText ? `Custom search focus prompt: ${customPromptText}` : ''}
             </div>
           </aside>
         )}
-        </>
+          </div>
         )}
 
       </div>

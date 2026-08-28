@@ -1,12 +1,17 @@
 import { relations } from 'drizzle-orm';
 import { integer, pgTable, serial, text, timestamp, jsonb } from 'drizzle-orm/pg-core';
 
-// Define the 'users' table
+// Define the 'users' table with persistent password credentials and profile data
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
-  uid: text('uid').notNull().unique(), // Firebase Auth UID
+  uid: text('uid').notNull().unique(), // Firebase Auth UID or internal unique identifier
   email: text('email').notNull(),
+  passwordHash: text('password_hash'),
+  salt: text('salt'),
+  name: text('name'),
+  role: text('role').default('user'),
   createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
 });
 
 // Define the 'authorized_users' table for user master (admin authorization whitelist)

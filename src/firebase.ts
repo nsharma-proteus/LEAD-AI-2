@@ -9,11 +9,27 @@ import {
   User, 
   Auth 
 } from 'firebase/auth';
-import firebaseConfig from '../firebase-applet-config.json';
+// Firebase configuration for Proteus Lead Platform
+const firebaseConfig = {
+  apiKey: ((import.meta as any).env?.VITE_FIREBASE_API_KEY) || "AIzaSyAMs4XZAQqd7Twx_K-otvSvAzaI77NH_Js",
+  projectId: ((import.meta as any).env?.VITE_FIREBASE_PROJECT_ID) || "proteuslead",
+  authDomain: ((import.meta as any).env?.VITE_FIREBASE_AUTH_DOMAIN) || "proteuslead.firebaseapp.com",
+  storageBucket: ((import.meta as any).env?.VITE_FIREBASE_STORAGE_BUCKET) || "proteuslead.appspot.com",
+  appId: ((import.meta as any).env?.VITE_FIREBASE_APP_ID) || "1:451986737678:web:5949d4f76369eae8384a5f"
+};
 
-// Initialize Firebase App and Auth once
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+// Safely initialize Firebase App and Auth with error handling
+let app: any;
+let authInstance: any = null;
+
+try {
+  app = initializeApp(firebaseConfig);
+  authInstance = getAuth(app);
+} catch (e) {
+  console.warn("Firebase initialization notice:", e);
+}
+
+export const auth = authInstance;
 
 const provider = new GoogleAuthProvider();
 // Request explicit scopes for Google Sheets and Google Drive (creating new report files)
@@ -28,18 +44,31 @@ export const initAuth = (
   onAuthSuccess: (user: User, token: string | null) => void,
   onAuthFailure: () => void
 ) => {
-  return onAuthStateChanged(auth, async (user: User | null) => {
-    if (user) {
-      onAuthSuccess(user, cachedAccessToken);
-    } else {
-      cachedAccessToken = null;
-      onAuthFailure();
-    }
-  });
+  if (!auth) {
+    onAuthFailure();
+    return () => {};
+  }
+  try {
+    return onAuthStateChanged(auth, async (user: User | null) => {
+      if (user) {
+        onAuthSuccess(user, cachedAccessToken);
+      } else {
+        cachedAccessToken = null;
+        onAuthFailure();
+      }
+    });
+  } catch (err) {
+    console.warn("Firebase Auth listener error:", err);
+    onAuthFailure();
+    return () => {};
+  }
 };
 
 // Sign in with Email and Password
 export const emailPasswordSignIn = async (email: string, password: string): Promise<User> => {
+  if (!auth) {
+    throw new Error('Authentication service is operating in local/corporate mode.');
+  }
   try {
     const result = await signInWithEmailAndPassword(auth, email, password);
     return result.user;
@@ -51,6 +80,9 @@ export const emailPasswordSignIn = async (email: string, password: string): Prom
 
 // Sign up with Email and Password
 export const emailPasswordSignUp = async (email: string, password: string): Promise<User> => {
+  if (!auth) {
+    throw new Error('Authentication service is operating in local/corporate mode.');
+  }
   try {
     const result = await createUserWithEmailAndPassword(auth, email, password);
     return result.user;
@@ -62,6 +94,9 @@ export const emailPasswordSignUp = async (email: string, password: string): Prom
 
 // Sign in via Google popup to get the user credentials and OAuth access token
 export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
+  if (!auth) {
+    throw new Error('Google Sign-In is unavailable. Please sign in with email and password.');
+  }
   try {
     isSigningIn = true;
     const result = await signInWithPopup(auth, provider);
@@ -87,7 +122,13 @@ export const getCachedAccessToken = (): string | null => {
 };
 
 export const googleSignOut = async () => {
-  await auth.signOut();
+  if (auth) {
+    try {
+      await auth.signOut();
+    } catch (e) {
+      console.warn("Sign out notice:", e);
+    }
+  }
   cachedAccessToken = null;
 };
 

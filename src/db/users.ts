@@ -1,23 +1,108 @@
 import { db } from './index.ts';
 import { users, authorizedUsers, authLogs } from './schema.ts';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, sql } from 'drizzle-orm';
 
-export async function getOrCreateUser(uid: string, email: string) {
+export interface DbUser {
+  id: number;
+  uid: string;
+  email: string;
+  passwordHash?: string | null;
+  salt?: string | null;
+  name?: string | null;
+  role?: string | null;
+  createdAt?: Date | null;
+  updatedAt?: Date | null;
+}
+
+// Find a user record in Cloud SQL by email (case-insensitive)
+export async function getUserByEmail(email: string): Promise<DbUser | null> {
   try {
+    const cleanEmail = (email || '').toLowerCase().trim();
+    if (!cleanEmail) return null;
+    const records = await db.select().from(users);
+    const matched = records.find(u => u.email.toLowerCase().trim() === cleanEmail);
+    return matched || null;
+  } catch (err) {
+    console.error("Failed to query user by email from Cloud SQL:", err);
+    return null;
+  }
+}
+
+// Save or update user credentials (password hash, salt, role, name) persistently in Cloud SQL
+export async function saveUserCredentials({
+  email,
+  passwordHash,
+  salt,
+  name,
+  role = 'user',
+  uid,
+}: {
+  email: string;
+  passwordHash: string;
+  salt: string;
+  name?: string;
+  role?: string;
+  uid?: string;
+}): Promise<DbUser> {
+  const cleanEmail = email.toLowerCase().trim();
+  const existing = await getUserByEmail(cleanEmail);
+
+  if (existing) {
+    const updated = await db.update(users)
+      .set({
+        passwordHash,
+        salt,
+        name: name || existing.name || cleanEmail.split('@')[0],
+        role: role || existing.role || 'user',
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, existing.id))
+      .returning();
+    return updated[0] as DbUser;
+  } else {
+    const finalUid = uid || ('user-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7));
+    const inserted = await db.insert(users)
+      .values({
+        uid: finalUid,
+        email: cleanEmail,
+        passwordHash,
+        salt,
+        name: name || cleanEmail.split('@')[0],
+        role: role || 'user',
+      })
+      .returning();
+    return inserted[0] as DbUser;
+  }
+}
+
+// Create or update a user upon successful authentication
+export async function getOrCreateUser(uid: string, email: string, name?: string, role?: string): Promise<DbUser> {
+  try {
+    const cleanEmail = email.toLowerCase().trim();
+    const existing = await getUserByEmail(cleanEmail);
+    if (existing) {
+      const updated = await db.update(users)
+        .set({
+          uid: uid || existing.uid,
+          name: name || existing.name || cleanEmail.split('@')[0],
+          role: role || existing.role || 'user',
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, existing.id))
+        .returning();
+      return updated[0] as DbUser;
+    }
+
     const result = await db.insert(users)
       .values({
         uid,
-        email: email.toLowerCase().trim(),
-      })
-      .onConflictDoUpdate({
-        target: users.uid,
-        set: {
-          email: email.toLowerCase().trim(),
-        },
+        email: cleanEmail,
+        name: name || cleanEmail.split('@')[0],
+        role: role || 'user',
       })
       .returning();
 
-    return result[0];
+    return result[0] as DbUser;
   } catch (err) {
     console.error("Failed to get or create user in Cloud SQL:", err);
     throw err;
@@ -98,13 +183,25 @@ export async function getAuthLogsList(limitCount = 100) {
 export async function getAuthorizedUsersList() {
   const whitelist = await db.select().from(authorizedUsers).orderBy(authorizedUsers.emailOrDomain);
   const registeredUsers = await db.select().from(users);
-  const registeredEmailSet = new Set(registeredUsers.map(u => u.email.toLowerCase().trim()));
+  
+  // Map of email -> user record with password_hash status
+  const userMap = new Map<string, typeof registeredUsers[0]>();
+  for (const u of registeredUsers) {
+    userMap.set(u.email.toLowerCase().trim(), u);
+  }
 
   return whitelist.map(entry => {
-    const isDomain = !entry.emailOrDomain.includes('@');
+    const cleanTerm = entry.emailOrDomain.toLowerCase().trim();
+    const isDomain = !cleanTerm.includes('@');
+    const matchedUser = userMap.get(cleanTerm);
+    const hasPasswordSet = Boolean(matchedUser && matchedUser.passwordHash);
+
     return {
       ...entry,
-      isRegistered: isDomain ? true : registeredEmailSet.has(entry.emailOrDomain.toLowerCase().trim())
+      isRegistered: isDomain ? true : hasPasswordSet,
+      hasPasswordSet,
+      userId: matchedUser?.id,
+      userUid: matchedUser?.uid,
     };
   });
 }
@@ -131,3 +228,4 @@ export async function removeAuthorizedUser(id: number) {
     .where(eq(authorizedUsers.id, id))
     .returning();
 }
+

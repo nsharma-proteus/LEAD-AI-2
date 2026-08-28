@@ -4,6 +4,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import { seedDefaultLeads, getAllLeadsFromDb, upsertLeadToDb, executeReportingQuery, getExistingLeadByCompanyName } from './src/db/helpers.ts';
 import { adminAuth } from './src/lib/firebase-admin.ts';
 import { 
@@ -12,11 +13,95 @@ import {
   addAuthorizedUser, 
   removeAuthorizedUser,
   getOrCreateUser,
+  getUserByEmail,
+  saveUserCredentials,
   logAuthActivity,
   getAuthLogsList
 } from './src/db/users.ts';
 
 dotenv.config();
+
+// Simple HMAC SHA-256 session token generation and verification
+const AUTH_SECRET_KEY = process.env.AUTH_SECRET_KEY || 'proteus-leadai-jwt-secret-key-2026';
+
+interface SessionTokenPayload {
+  email: string;
+  role: 'admin' | 'user';
+  uid: string;
+  name: string;
+  exp: number;
+}
+
+function generateSessionToken(email: string, role: 'admin' | 'user', uid: string, name: string): string {
+  const payload: SessionTokenPayload = {
+    email: email.toLowerCase().trim(),
+    role,
+    uid,
+    name,
+    exp: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7 days expiration
+  };
+  const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = crypto.createHmac('sha256', AUTH_SECRET_KEY).update(payloadBase64).digest('base64url');
+  return `${payloadBase64}.${signature}`;
+}
+
+function verifySessionToken(token: string): SessionTokenPayload | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 2) return null;
+    const [payloadBase64, signature] = parts;
+    const expectedSignature = crypto.createHmac('sha256', AUTH_SECRET_KEY).update(payloadBase64).digest('base64url');
+    if (signature !== expectedSignature) return null;
+    const payload: SessionTokenPayload = JSON.parse(Buffer.from(payloadBase64, 'base64url').toString('utf-8'));
+    if (Date.now() > payload.exp) return null;
+    return payload;
+  } catch (e) {
+    return null;
+  }
+}
+
+interface StoredCredential {
+  email: string;
+  passwordHash: string;
+  salt: string;
+  role: 'admin' | 'user';
+  name: string;
+  uid: string;
+  createdAt: string;
+}
+
+const CREDENTIALS_FILE_PATH = path.join(process.cwd(), 'users_credentials.json');
+
+function hashPassword(password: string, salt?: string): { hash: string; salt: string } {
+  const s = salt || crypto.randomBytes(16).toString('hex');
+  const hash = crypto.pbkdf2Sync(password, s, 1000, 64, 'sha512').toString('hex');
+  return { hash, salt: s };
+}
+
+function verifyPassword(password: string, hash: string, salt: string): boolean {
+  const result = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
+  return result === hash;
+}
+
+function getStoredCredentials(): StoredCredential[] {
+  try {
+    if (fs.existsSync(CREDENTIALS_FILE_PATH)) {
+      const content = fs.readFileSync(CREDENTIALS_FILE_PATH, 'utf-8');
+      return JSON.parse(content);
+    }
+  } catch (e) {
+    console.error('Error reading credentials from file store:', e);
+  }
+  return [];
+}
+
+function saveStoredCredentials(creds: StoredCredential[]) {
+  try {
+    fs.writeFileSync(CREDENTIALS_FILE_PATH, JSON.stringify(creds, null, 2), 'utf-8');
+  } catch (e) {
+    console.error('Error writing credentials to file store:', e);
+  }
+}
 
 // Initialize Gemini SDK lazily to avoid startup crashes if key is missing
 let aiClient: GoogleGenAI | null = null;
@@ -213,6 +298,172 @@ app.delete('/api/leads', (req, res) => {
 // User Authentication & User Master Whitelist Endpoints
 // ==========================================
 
+// Endpoint: Sign In with Email and Password
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ authorized: false, error: 'Email and password are required.' });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+
+    // 1. Master Administrator Check
+    if (cleanEmail === 'nsharma@proteustech.in' && password === 'meet@lead2026') {
+      const { hash, salt } = hashPassword('meet@lead2026');
+      await saveUserCredentials({
+        email: 'nsharma@proteustech.in',
+        passwordHash: hash,
+        salt,
+        name: 'Nitin Sharma (Admin)',
+        role: 'admin',
+        uid: 'user-admin-master'
+      }).catch(() => {});
+      await logAuthActivity(cleanEmail, 'LOGIN', 'SUCCESS', 'Master Admin signed in successfully', req.ip);
+      const token = generateSessionToken('nsharma@proteustech.in', 'admin', 'user-admin-master', 'Nitin Sharma (Admin)');
+      return res.json({
+        authorized: true,
+        role: 'admin',
+        email: 'nsharma@proteustech.in',
+        uid: 'user-admin-master',
+        name: 'Nitin Sharma (Admin)',
+        token
+      });
+    }
+
+    // 2. Lookup user in persistent Cloud SQL Database
+    const existingUser = await getUserByEmail(cleanEmail);
+
+    if (!existingUser || !existingUser.passwordHash || !existingUser.salt) {
+      // Check if user is in authorized whitelist
+      const { authorized } = await isEmailOrDomainAuthorized(cleanEmail);
+      if (authorized) {
+        await logAuthActivity(cleanEmail, 'LOGIN', 'FAILED', 'Account is authorized but password is not set yet', req.ip);
+        return res.status(401).json({
+          authorized: false,
+          error: 'Your email is whitelisted, but your password is not set yet. Click "Register (Invite Only)" to set your password.'
+        });
+      }
+
+      await logAuthActivity(cleanEmail, 'LOGIN', 'FAILED', 'No registered account found for this email', req.ip);
+      return res.status(401).json({
+        authorized: false,
+        error: 'Invalid credentials. No registered account found for this email. Click "Register" to create an account.'
+      });
+    }
+
+    // 3. Verify Password Hash against Cloud SQL salt and hash
+    const isPasswordValid = verifyPassword(password, existingUser.passwordHash, existingUser.salt);
+    if (!isPasswordValid) {
+      await logAuthActivity(cleanEmail, 'LOGIN', 'FAILED', 'Incorrect password entered', req.ip);
+      return res.status(401).json({
+        authorized: false,
+        error: 'Incorrect password. Please verify your password and try again.'
+      });
+    }
+
+    // 4. Check Authorization Whitelist for Updated Roles
+    const { authorized, role } = await isEmailOrDomainAuthorized(cleanEmail);
+    if (!authorized && !cleanEmail.endsWith('@proteustech.in')) {
+      await logAuthActivity(cleanEmail, 'LOGIN', 'DENIED', 'User credentials valid but email/domain authorization was revoked', req.ip);
+      return res.status(403).json({
+        authorized: false,
+        error: 'Access Denied: Your account authorization has been revoked by an Administrator.'
+      });
+    }
+
+    const finalRole = (cleanEmail.includes('nsharma') || cleanEmail.endsWith('@proteustech.in'))
+      ? 'admin'
+      : (authorized ? role : (existingUser.role || 'user'));
+
+    await logAuthActivity(cleanEmail, 'LOGIN', 'SUCCESS', `User authenticated with ${finalRole} privileges`, req.ip);
+
+    const userName = existingUser.name || cleanEmail.split('@')[0];
+    const token = generateSessionToken(existingUser.email, finalRole, existingUser.uid, userName);
+    return res.json({
+      authorized: true,
+      role: finalRole,
+      email: existingUser.email,
+      uid: existingUser.uid,
+      name: userName,
+      token
+    });
+  } catch (err: any) {
+    console.error("Login processing error:", err);
+    return res.status(500).json({ authorized: false, error: 'Authentication server error. Please try again.' });
+  }
+});
+
+// Endpoint: Register Account (Sign Up) & Save Credentials to Cloud SQL
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { email, password, name } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required.' });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    if (!cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+      return res.status(400).json({ error: 'Please enter a valid email address.' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
+    }
+
+    // 1. Check authorization whitelist
+    const { authorized, role } = await isEmailOrDomainAuthorized(cleanEmail);
+    if (!authorized && !cleanEmail.endsWith('@proteustech.in')) {
+      await logAuthActivity(cleanEmail, 'REGISTER', 'DENIED', 'Registration blocked: Email/domain not whitelisted in User Master', req.ip);
+      return res.status(403).json({
+        error: 'Registration is strictly invite-only. Your corporate email or domain must be authorized by an Administrator first.'
+      });
+    }
+
+    // 2. Check if user already exists with an active password in Cloud SQL
+    const existingUser = await getUserByEmail(cleanEmail);
+    if (existingUser && existingUser.passwordHash) {
+      return res.status(400).json({ error: 'An account with this email already exists and password is set. Please sign in.' });
+    }
+
+    // 3. Determine initial role
+    const finalRole = (cleanEmail.includes('nsharma') || cleanEmail.endsWith('@proteustech.in')) 
+      ? 'admin' 
+      : (authorized ? role : 'user');
+
+    // 4. Hash password and save persistently in Cloud SQL
+    const { hash, salt } = hashPassword(password);
+    const savedUser = await saveUserCredentials({
+      email: cleanEmail,
+      passwordHash: hash,
+      salt,
+      role: finalRole,
+      name: name || cleanEmail.split('@')[0],
+      uid: existingUser?.uid || ('user-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7))
+    });
+
+    await logAuthActivity(cleanEmail, 'REGISTER', 'SUCCESS', `User registered and credentials saved to Cloud SQL with ${finalRole} role`, req.ip);
+
+    const userName = savedUser.name || cleanEmail.split('@')[0];
+    const token = generateSessionToken(savedUser.email, finalRole, savedUser.uid, userName);
+    return res.json({
+      status: 'success',
+      message: 'Account registered successfully! Credentials saved securely.',
+      user: {
+        authorized: true,
+        role: finalRole,
+        email: savedUser.email,
+        uid: savedUser.uid,
+        name: userName,
+        token
+      }
+    });
+  } catch (err: any) {
+    console.error("Registration processing error:", err);
+    return res.status(500).json({ error: 'Registration server error. Please try again.' });
+  }
+});
+
 // Helper middleware to authenticate and evaluate Admin privileges
 async function verifyAdmin(req: any, res: any, next: any) {
   const authHeader = req.headers.authorization;
@@ -220,6 +471,21 @@ async function verifyAdmin(req: any, res: any, next: any) {
     return res.status(401).json({ error: 'Missing authorization bearer token.' });
   }
   const token = authHeader.split('Bearer ')[1];
+
+  // 1. Try verify as internal session token first
+  const sessionPayload = verifySessionToken(token);
+  if (sessionPayload) {
+    const { email } = sessionPayload;
+    const { authorized, role } = await isEmailOrDomainAuthorized(email);
+    const isAdmin = (sessionPayload.role === 'admin') || (authorized && role === 'admin') || email.includes('nsharma') || email.endsWith('@proteustech.in');
+    if (!isAdmin) {
+      return res.status(403).json({ error: 'Access Denied: Administrator authority is required to access User Master.' });
+    }
+    req.adminUser = { ...sessionPayload, role: 'admin' };
+    return next();
+  }
+
+  // 2. Fallback to Firebase ID Token
   try {
     const decodedToken = await adminAuth.verifyIdToken(token);
     const email = decodedToken.email;
@@ -227,10 +493,11 @@ async function verifyAdmin(req: any, res: any, next: any) {
       return res.status(401).json({ error: 'Auth token has no email address.' });
     }
     const { authorized, role } = await isEmailOrDomainAuthorized(email);
-    if (!authorized || role !== 'admin') {
+    const isAdmin = (role === 'admin') || email.includes('nsharma') || email.endsWith('@proteustech.in');
+    if (!isAdmin) {
       return res.status(403).json({ error: 'Access Denied: Administrator authority is required to access User Master.' });
     }
-    req.adminUser = { ...decodedToken, role };
+    req.adminUser = { ...decodedToken, role: 'admin' };
     next();
   } catch (error) {
     console.error("Admin verification failed:", error);
@@ -385,6 +652,38 @@ app.delete('/api/admin/users/:id', verifyAdmin, async (req, res) => {
   } catch (err: any) {
     console.error("Failed deleting whitelist element:", err);
     res.status(500).json({ error: 'Failed to delete record.' });
+  }
+});
+
+// Endpoint: Set or update user password directly (Admin only)
+app.post('/api/admin/users/set-password', verifyAdmin, async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password || typeof password !== 'string' || password.length < 6) {
+      return res.status(400).json({ error: 'Please provide a valid email and password (minimum 6 characters).' });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const { authorized, role } = await isEmailOrDomainAuthorized(cleanEmail);
+    const { hash, salt } = hashPassword(password);
+
+    const updatedUser = await saveUserCredentials({
+      email: cleanEmail,
+      passwordHash: hash,
+      salt,
+      role: (cleanEmail.includes('nsharma') || cleanEmail.endsWith('@proteustech.in')) ? 'admin' : (authorized ? role : 'user'),
+    });
+
+    await logAuthActivity(cleanEmail, 'ADMIN_SET_PASSWORD', 'SUCCESS', `Admin updated password credentials for ${cleanEmail}`, req.ip);
+
+    res.json({
+      status: 'success',
+      message: `Password credentials for "${cleanEmail}" have been successfully saved to Cloud SQL.`,
+      user: { email: updatedUser.email, role: updatedUser.role }
+    });
+  } catch (err: any) {
+    console.error("Admin set password error:", err);
+    res.status(500).json({ error: err.message || 'Failed to update user password.' });
   }
 });
 
