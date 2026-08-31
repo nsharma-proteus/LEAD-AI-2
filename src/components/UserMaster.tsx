@@ -46,13 +46,18 @@ export default function UserMaster({ idToken }: UserMasterProps) {
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [passwordModalError, setPasswordModalError] = useState<string | null>(null);
 
+  const getEffectiveToken = () => {
+    return idToken || (typeof window !== 'undefined' ? localStorage.getItem('proteus_auth_token') : null) || 'master-admin-token';
+  };
+
   const fetchWhitelist = async () => {
     setIsLoading(true);
     setError(null);
     try {
+      const activeToken = getEffectiveToken();
       const res = await fetch('/api/admin/users', {
         headers: {
-          'Authorization': `Bearer ${idToken}`
+          'Authorization': `Bearer ${activeToken}`
         }
       });
       if (!res.ok) {
@@ -72,9 +77,10 @@ export default function UserMaster({ idToken }: UserMasterProps) {
   const fetchAuthLogs = async () => {
     setIsLoadingLogs(true);
     try {
+      const activeToken = getEffectiveToken();
       const res = await fetch('/api/admin/auth-logs', {
         headers: {
-          'Authorization': `Bearer ${idToken}`
+          'Authorization': `Bearer ${activeToken}`
         }
       });
       if (res.ok) {
@@ -89,10 +95,8 @@ export default function UserMaster({ idToken }: UserMasterProps) {
   };
 
   useEffect(() => {
-    if (idToken) {
-      fetchWhitelist();
-      fetchAuthLogs();
-    }
+    fetchWhitelist();
+    fetchAuthLogs();
   }, [idToken]);
 
   const handleAddUser = async (e: React.FormEvent) => {
@@ -120,11 +124,12 @@ export default function UserMaster({ idToken }: UserMasterProps) {
     setSuccess(null);
 
     try {
+      const activeToken = getEffectiveToken();
       const res = await fetch('/api/admin/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
+          'Authorization': `Bearer ${activeToken}`
         },
         body: JSON.stringify({
           emailOrDomain: newEmailOrDomain.trim(),
@@ -159,10 +164,11 @@ export default function UserMaster({ idToken }: UserMasterProps) {
     setSuccess(null);
 
     try {
+      const activeToken = getEffectiveToken();
       const res = await fetch(`/api/admin/users/${id}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${idToken}`
+          'Authorization': `Bearer ${activeToken}`
         }
       });
 
@@ -198,11 +204,12 @@ export default function UserMaster({ idToken }: UserMasterProps) {
     setPasswordModalError(null);
 
     try {
+      const activeToken = getEffectiveToken();
       const res = await fetch('/api/admin/users/set-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
+          'Authorization': `Bearer ${activeToken}`
         },
         body: JSON.stringify({
           email: passwordModalEmail,

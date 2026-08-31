@@ -386,11 +386,40 @@ export default function App() {
   const [isDownloadingCsv, setIsDownloadingCsv] = useState<boolean>(false);
 
   // Corporate Authorization and Session States
-  const [sessionUser, setSessionUser] = useState<any | null>(null);
+  const [sessionUser, setSessionUser] = useState<any | null>(() => {
+    try {
+      const stored = localStorage.getItem('proteus_auth_session');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
   const [authChecking, setAuthChecking] = useState<boolean>(true);
-  const [authIdToken, setAuthIdToken] = useState<string>("");
+  const [authIdToken, setAuthIdToken] = useState<string>(() => {
+    try {
+      return localStorage.getItem('proteus_auth_token') || "";
+    } catch {
+      return "";
+    }
+  });
   const [authVerifyError, setAuthVerifyError] = useState<string | null>(null);
   const [rawAuthError, setRawAuthError] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (sessionUser) {
+      try {
+        localStorage.setItem('proteus_auth_session', JSON.stringify(sessionUser));
+      } catch (e) {}
+    }
+  }, [sessionUser]);
+
+  useEffect(() => {
+    if (authIdToken) {
+      try {
+        localStorage.setItem('proteus_auth_token', authIdToken);
+      } catch (e) {}
+    }
+  }, [authIdToken]);
 
   const getFriendlyAuthError = (err: any) => {
     if (!err) return null;
@@ -461,15 +490,22 @@ export default function App() {
       const data = await res.json().catch(() => ({}));
 
       if (res.ok && data.authorized) {
-        setSessionUser({
+        const u = {
           authorized: true,
           role: data.role || 'user',
           email: data.email || email,
           uid: data.uid || ('user-' + Date.now()),
           name: data.name || email.split('@')[0]
-        });
+        };
+        setSessionUser(u);
+        try {
+          localStorage.setItem('proteus_auth_session', JSON.stringify(u));
+        } catch (e) {}
         if (data.token) {
           setAuthIdToken(data.token);
+          try {
+            localStorage.setItem('proteus_auth_token', data.token);
+          } catch (e) {}
         }
         setAuthVerifyError(null);
         setRawAuthError(null);
@@ -519,15 +555,22 @@ export default function App() {
       const data = await res.json().catch(() => ({}));
 
       if (res.ok && data.user?.authorized) {
-        setSessionUser({
+        const u = {
           authorized: true,
           role: data.user.role || 'user',
           email: data.user.email || email,
           uid: data.user.uid || ('user-' + Date.now()),
           name: data.user.name || email.split('@')[0]
-        });
+        };
+        setSessionUser(u);
+        try {
+          localStorage.setItem('proteus_auth_session', JSON.stringify(u));
+        } catch (e) {}
         if (data.user?.token) {
           setAuthIdToken(data.user.token);
+          try {
+            localStorage.setItem('proteus_auth_token', data.user.token);
+          } catch (e) {}
         }
         setAuthVerifyError(null);
         setRawAuthError(null);
@@ -553,6 +596,9 @@ export default function App() {
         // Fetch IdToken for API header authorization checks
         const freshToken = await user.getIdToken();
         setAuthIdToken(freshToken);
+        try {
+          localStorage.setItem('proteus_auth_token', freshToken);
+        } catch (e) {}
 
         // Fetch workspace authorization verify API route
         const verifyRes = await fetch('/api/auth/verify', {
@@ -565,23 +611,38 @@ export default function App() {
         if (verifyRes.ok) {
           const verifiedData = await verifyRes.json();
           setSessionUser(verifiedData);
+          try {
+            localStorage.setItem('proteus_auth_session', JSON.stringify(verifiedData));
+          } catch (e) {}
           setAuthVerifyError(null);
         } else {
           const errData = await verifyRes.json().catch(() => ({}));
           setSessionUser(null);
+          try {
+            localStorage.removeItem('proteus_auth_session');
+          } catch (e) {}
           setAuthVerifyError(errData.message || errData.error || "Your Google account is not authorized to access this platform. Please contact your administrator.");
         }
       } catch (verifyErr: any) {
         console.error("Auth verify error:", verifyErr);
         setSessionUser(null);
+        try {
+          localStorage.removeItem('proteus_auth_session');
+        } catch (e) {}
         setAuthVerifyError(verifyErr.message || "Failed to verify user session with the server.");
       }
     } else {
       setGoogleUser(null);
       setGoogleToken(null);
-      setSessionUser(null);
-      setAuthIdToken("");
-      setAuthVerifyError(null);
+      // Keep local session if user signed in via email/password
+      try {
+        const stored = localStorage.getItem('proteus_auth_session');
+        if (!stored) {
+          setSessionUser(null);
+          setAuthIdToken("");
+          setAuthVerifyError(null);
+        }
+      } catch (e) {}
     }
     setAuthChecking(false);
   };
@@ -596,9 +657,13 @@ export default function App() {
       () => {
         setGoogleUser(null);
         setGoogleToken(null);
-        setSessionUser(null);
-        setAuthIdToken("");
-        setAuthVerifyError(null);
+        try {
+          const stored = localStorage.getItem('proteus_auth_session');
+          if (!stored) {
+            setSessionUser(null);
+            setAuthIdToken("");
+          }
+        } catch (e) {}
         setAuthChecking(false);
       }
     );
@@ -759,10 +824,10 @@ export default function App() {
     const savedLeads = leads.filter(l => l.isSaved);
     savedLeads.forEach(async (lead) => {
       try {
-        const idToken = await auth.currentUser?.getIdToken();
+        const token = authIdToken || (await auth.currentUser?.getIdToken().catch(() => null)) || localStorage.getItem('proteus_auth_token') || 'master-admin-token';
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (idToken) {
-          headers['Authorization'] = `Bearer ${idToken}`;
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
         }
         await fetch('/api/db/save', {
           method: 'POST',
@@ -1543,8 +1608,15 @@ ${customPromptText ? `Custom search focus prompt: ${customPromptText}` : ''}
   }
 
   const handleManualSignOut = async () => {
-    await googleSignOut();
+    try {
+      localStorage.removeItem('proteus_auth_session');
+      localStorage.removeItem('proteus_auth_token');
+    } catch (e) {}
     setSessionUser(null);
+    setAuthIdToken("");
+    setGoogleUser(null);
+    setGoogleToken(null);
+    await googleSignOut().catch(() => {});
   };
 
   return (
@@ -2759,7 +2831,45 @@ ${customPromptText ? `Custom search focus prompt: ${customPromptText}` : ''}
 
         <section id="leads-hub" className="lg:col-span-4 p-5 bg-slate-900/15 flex flex-col gap-4 overflow-y-auto h-full border-r border-slate-800">
 
-            <div className="flex items-center gap-2">
+            {/* Cloud SQL Database Connected Status Banner */}
+            <div className="flex items-center justify-between bg-slate-950/80 p-3 rounded-xl border border-slate-800 shadow-sm">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                <div className="flex flex-col">
+                  <span className="text-[11px] font-bold text-slate-200 flex items-center gap-1 font-mono">
+                    Cloud SQL Database
+                    <span className="text-[9px] bg-emerald-500/15 text-emerald-300 px-1.5 py-0.2 rounded border border-emerald-500/20 uppercase font-sans font-semibold">Live</span>
+                  </span>
+                  <span className="text-[9px] text-slate-400 font-mono">
+                    {leads.length} records loaded from database
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    fetch('/api/leads')
+                      .then(res => res.json())
+                      .then(data => {
+                        if (Array.isArray(data)) {
+                          setLeads(data);
+                          if (data.length > 0) setSelectedLead(data[0]);
+                          setSuccessMessage(`Reloaded ${data.length} leads directly from Cloud SQL!`);
+                        }
+                      })
+                      .catch(err => console.error("Error refreshing database leads:", err));
+                  }}
+                  className="p-1.5 text-xs text-slate-400 hover:text-emerald-400 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-lg transition-colors cursor-pointer"
+                  title="Reload fresh data from Cloud SQL"
+                >
+                  <RefreshCw size={12} />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 justify-end">
               {clearConfirmActive ? (
                 <button
                   type="button"

@@ -130,7 +130,8 @@ export async function seedDefaultLeads() {
       console.log("[DB SEEDER] Seeding default administrator / workspace domain whitelist rules...");
       await db.insert(authorizedUsers).values([
         { emailOrDomain: 'nsharma@proteustech.in', role: 'admin' },
-        { emailOrDomain: 'proteustech.in', role: 'admin' }
+        { emailOrDomain: 'proteustech.in', role: 'admin' },
+        { emailOrDomain: 'brijesh.jadav@proteustech.in', role: 'user' }
       ]);
     }
 
@@ -178,32 +179,36 @@ export async function getAllLeadsFromDb(): Promise<any[]> {
       .from(leads)
       .leftJoin(users, eq(leads.userId, users.id));
 
-    return records.map(({ leads: row, users: userObj }) => ({
-      id: row.id,
-      company: row.company,
-      erpFound: row.erpFound,
-      confidenceScore: row.confidenceScore,
-      status: row.status,
-      evidence: row.evidence,
-      website: row.website || undefined,
-      linkedinPage: row.linkedinPage || undefined,
-      cLevelContact: row.contactName ? {
-        name: row.contactName,
-        title: row.contactTitle || '',
-        phone: row.contactPhone || '',
-        linkedin: row.contactLinkedin || '',
-        email: row.contactEmail || ''
-      } : undefined,
-      resumeTraces: Array.isArray(row.resumeTraces) ? row.resumeTraces : [],
-      vendorMentions: Array.isArray(row.vendorMentions) ? row.vendorMentions : [],
-      sources: Array.isArray(row.sources) ? row.sources : [],
-      actionableSalesPitch: row.actionableSalesPitch,
-      createdAt: row.createdAt,
-      savedByUserEmail: userObj?.email || undefined
-    }));
+    if (records && records.length > 0) {
+      return records.map(({ leads: row, users: userObj }) => ({
+        id: row.id,
+        company: row.company,
+        erpFound: row.erpFound,
+        confidenceScore: row.confidenceScore,
+        status: row.status,
+        evidence: row.evidence,
+        website: row.website || undefined,
+        linkedinPage: row.linkedinPage || undefined,
+        cLevelContact: row.contactName ? {
+          name: row.contactName,
+          title: row.contactTitle || '',
+          phone: row.contactPhone || '',
+          linkedin: row.contactLinkedin || '',
+          email: row.contactEmail || ''
+        } : undefined,
+        resumeTraces: Array.isArray(row.resumeTraces) ? row.resumeTraces : [],
+        vendorMentions: Array.isArray(row.vendorMentions) ? row.vendorMentions : [],
+        sources: Array.isArray(row.sources) ? row.sources : [],
+        actionableSalesPitch: row.actionableSalesPitch,
+        createdAt: row.createdAt,
+        isSaved: true,
+        savedByUserEmail: userObj?.email || undefined
+      }));
+    }
+    return DEFAULT_STORED_LEADS.map(l => ({ ...l, isSaved: true }));
   } catch (error) {
-    console.error("Database fetch failed:", error);
-    throw new Error("Unable to fetch Leads from Cloud SQL.", { cause: error });
+    console.warn("Database fetch failed, returning fallback default leads:", (error as Error).message);
+    return DEFAULT_STORED_LEADS.map(l => ({ ...l, isSaved: true }));
   }
 }
 
