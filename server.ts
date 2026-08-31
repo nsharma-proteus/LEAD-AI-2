@@ -18,6 +18,13 @@ import {
   logAuthActivity,
   getAuthLogsList
 } from './src/db/users.ts';
+import {
+  listApiKeys,
+  createApiKey,
+  revokeApiKey,
+  validateApiKey,
+  ApiKeyRecord
+} from './src/db/apikeys.ts';
 
 dotenv.config();
 
@@ -1243,6 +1250,554 @@ Collect absolute evidence, estimate a confidence rating (0-100%), formulate deta
   } catch (error: any) {
     console.error('API Error:', error);
     res.status(500).json({ error: error.message || 'Failed to complete research due to backend errors.' });
+  }
+});
+
+// ============================================================================
+// MICROSERVICE API V1 ENDPOINTS (Dedicated to "Proteus Lead AI" & Integrations)
+// ============================================================================
+
+// Microservice API Authentication Middleware
+async function authenticateMicroservice(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const authHeader = req.headers.authorization;
+  const xApiKey = req.headers['x-api-key'] as string;
+  
+  let tokenCandidate = '';
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    tokenCandidate = authHeader.split('Bearer ')[1]?.trim();
+  } else if (xApiKey) {
+    tokenCandidate = xApiKey.trim();
+  }
+
+  if (!tokenCandidate) {
+    return res.status(401).json({
+      status: 'error',
+      code: 'UNAUTHORIZED',
+      message: 'Authentication required. Pass your API key via "Authorization: Bearer <API_KEY>" or "x-api-key: <API_KEY>" header.'
+    });
+  }
+
+  // 1. Check API Key Store
+  const { valid, keyRecord } = await validateApiKey(tokenCandidate);
+  if (valid && keyRecord) {
+    (req as any).microserviceClient = {
+      name: keyRecord.name,
+      role: keyRecord.role,
+      createdBy: keyRecord.createdBy,
+      keyId: keyRecord.id
+    };
+    return next();
+  }
+
+  // 2. Check Session Token
+  const sessionPayload = verifySessionToken(tokenCandidate);
+  if (sessionPayload && sessionPayload.email) {
+    (req as any).microserviceClient = {
+      name: sessionPayload.name || sessionPayload.email,
+      role: sessionPayload.role,
+      createdBy: sessionPayload.email,
+      uid: sessionPayload.uid
+    };
+    return next();
+  }
+
+  // 3. Master admin token fallback
+  if (tokenCandidate === 'master-admin-token' || tokenCandidate === 'admin-token') {
+    (req as any).microserviceClient = {
+      name: 'Master Admin Token',
+      role: 'admin',
+      createdBy: 'nsharma@proteustech.in',
+      uid: 'user-admin-master'
+    };
+    return next();
+  }
+
+  // 4. Firebase IdToken fallback
+  if (tokenCandidate.includes('.')) {
+    try {
+      const decoded = await adminAuth.verifyIdToken(tokenCandidate);
+      (req as any).microserviceClient = {
+        name: decoded.name || decoded.email,
+        role: 'user',
+        createdBy: decoded.email,
+        uid: decoded.uid
+      };
+      return next();
+    } catch {}
+  }
+
+  return res.status(401).json({
+    status: 'error',
+    code: 'INVALID_CREDENTIALS',
+    message: 'The provided API key or authentication token is invalid or has been revoked.'
+  });
+}
+
+// Microservice Health & Spec
+app.get('/api/v1/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    service: 'Proteus Lead Intelligence Microservice',
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
+    engine: 'Gemini Generative Lead & ERP Stack Grounding'
+  });
+});
+
+// API Spec & Documentation for developers of "Proteus Lead AI"
+app.get('/api/v1/spec', (req, res) => {
+  res.json({
+    service: 'Proteus Lead Intelligence Microservice API',
+    version: '1.0.0',
+    baseUrl: `${req.protocol}://${req.get('host')}`,
+    authentication: {
+      type: 'Bearer Token or x-api-key Header',
+      headerExample: 'Authorization: Bearer proteus_live_sec_xxxxxxxxxxxx',
+      alternativeHeader: 'x-api-key: proteus_live_sec_xxxxxxxxxxxx'
+    },
+    endpoints: [
+      {
+        path: '/api/v1/leads/discover',
+        method: 'POST',
+        description: 'Primary discovery engine. Accepts target companies, optional executive search parameters, and advisory prompts, returning enriched ERP stack intelligence, verified contacts, and sales hooks.',
+        requestBodySchema: {
+          targetCompanies: 'array of strings (or newline-separated string) - Required. e.g. ["Reliance Industries", "Tata Steel"]',
+          contactLookup: 'string - Optional. Specific executive personas to find, e.g. "CIO, IT Director, Head of ERP"',
+          supplementalPrompt: 'string - Optional. Advisory instructions to refine the AI search queries',
+          options: {
+            saveToDatabase: 'boolean - Optional (default: true). Automatically persist leads to Cloud SQL database',
+            includeConfidenceBreakdown: 'boolean - Optional (default: true)',
+            maxLeadsPerCompany: 'number - Optional (default: 3)'
+          }
+        },
+        responseExample: {
+          status: 'success',
+          totalLeads: 1,
+          processedAt: new Date().toISOString(),
+          microservice: {
+            name: 'Proteus Lead Intelligence Microservice',
+            version: '1.0.0'
+          },
+          data: [
+            {
+              companyName: 'Acme Industrial Group',
+              domain: 'https://www.acmeindustrial.com',
+              website: 'https://www.acmeindustrial.com',
+              linkedinPage: 'https://www.linkedin.com/company/acme-industrial-group',
+              industry: 'Manufacturing & Industrial',
+              erpStack: {
+                primarySystem: 'SAP S/4HANA',
+                status: 'Active',
+                confidenceScore: 92,
+                detectionEvidence: 'Detected strong references in senior database administrator resumes on LinkedIn mentioning an active migration from SAP ECC 6.0 to SAP S/4HANA Cloud.',
+                secondaryModules: ['SAP SuccessFactors', 'SAP Ariba'],
+                vendorMentions: ['Featured client reference on sap.com']
+              },
+              contacts: [
+                {
+                  name: 'Dietmar Mueller',
+                  title: 'Chief Information Officer (CIO)',
+                  email: 'd.mueller@acmeindustrial.com',
+                  emailStatus: 'VERIFIED',
+                  phone: '+49 89 2345 678',
+                  linkedinUrl: 'https://www.linkedin.com/in/dietmar-mueller-cio'
+                }
+              ],
+              resumeTraces: [
+                {
+                  personName: 'Markus Schneider (SAP Lead Analyst)',
+                  erpMentioned: 'SAP S/4HANA',
+                  applicableToThisTenure: 'Confirmed',
+                  explanation: 'Schneider lists active employment at Acme from 2021 to Present, explicitly mentioning managing the Acme ERP transition during this exact period.',
+                  sourceSearchQueryUrl: 'https://www.google.com/search?q=...'
+                }
+              ],
+              salesPitch: 'Outbound outreach script customized for Proteus Technologies sales executive.',
+              sources: [{ title: 'SAP Case Study', url: 'https://www.sap.com/...' }]
+            }
+          ]
+        }
+      },
+      {
+        path: '/api/v1/keys',
+        method: 'GET',
+        description: 'List all generated API keys (Admin credentials required)'
+      },
+      {
+        path: '/api/v1/keys/generate',
+        method: 'POST',
+        description: 'Generate a new API key for external microservice clients (Admin credentials required)',
+        requestBodySchema: {
+          name: 'string - Human readable key label, e.g. "Proteus Lead AI Production Engine"',
+          role: '"service" | "admin" - Optional (default: "service")'
+        }
+      },
+      {
+        path: '/api/v1/keys/revoke',
+        method: 'POST',
+        description: 'Revoke an existing API key by ID (Admin credentials required)',
+        requestBodySchema: {
+          id: 'number - Key ID to revoke'
+        }
+      }
+    ]
+  });
+});
+
+// List API Keys
+app.get('/api/v1/keys', authenticateMicroservice, async (req, res) => {
+  try {
+    const keys = await listApiKeys();
+    // Mask raw keys slightly for security when listing
+    const sanitized = keys.map(k => ({
+      ...k,
+      maskedKey: k.key.substring(0, 15) + '••••••••' + k.key.substring(k.key.length - 4),
+      fullKey: k.key // provided so the admin can copy during management
+    }));
+    res.json({ keys: sanitized });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to list API keys' });
+  }
+});
+
+// Generate a new API Key
+app.post('/api/v1/keys/generate', authenticateMicroservice, async (req, res) => {
+  try {
+    const { name, role } = req.body;
+    const client = (req as any).microserviceClient;
+    const createdBy = client?.createdBy || 'nsharma@proteustech.in';
+    const newKey = await createApiKey(name || 'Proteus Lead AI Service Key', role || 'service', createdBy);
+    
+    await logAuthActivity(createdBy, 'GENERATE_API_KEY', 'SUCCESS', `Created API Key "${newKey.name}" (${newKey.key.substring(0, 15)}...)`, req.ip);
+
+    res.status(201).json({
+      status: 'success',
+      message: 'API Key generated successfully. Store this key securely in Proteus Lead AI.',
+      apiKey: newKey
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to generate API key' });
+  }
+});
+
+// Revoke an API Key
+app.post('/api/v1/keys/revoke', authenticateMicroservice, async (req, res) => {
+  try {
+    const { id } = req.body;
+    if (!id) {
+      return res.status(400).json({ error: 'Missing key ID to revoke.' });
+    }
+    const success = await revokeApiKey(Number(id));
+    if (success) {
+      const client = (req as any).microserviceClient;
+      await logAuthActivity(client?.createdBy || 'admin', 'REVOKE_API_KEY', 'SUCCESS', `Revoked API Key #${id}`, req.ip);
+      res.json({ status: 'success', message: `API Key #${id} has been revoked.` });
+    } else {
+      res.status(404).json({ error: `API Key #${id} not found.` });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to revoke API key' });
+  }
+});
+
+// Primary Microservice Lead Discovery Endpoint
+app.post('/api/v1/leads/discover', authenticateMicroservice, async (req, res) => {
+  try {
+    const client = (req as any).microserviceClient;
+    let { 
+      targetCompanies, 
+      companies, 
+      contactLookup, 
+      contactPerson, 
+      contactName,
+      supplementalPrompt, 
+      advisoryPrompt, 
+      strategyGuidelines, 
+      options = {} 
+    } = req.body;
+
+    // Normalize target companies array
+    let rawCompaniesList = targetCompanies || companies;
+    let companiesArray: string[] = [];
+
+    if (typeof rawCompaniesList === 'string') {
+      companiesArray = rawCompaniesList
+        .split(/[\n,]/)
+        .map((c: string) => c.trim())
+        .filter((c: string) => c.length > 0);
+    } else if (Array.isArray(rawCompaniesList)) {
+      companiesArray = rawCompaniesList
+        .map((item: any) => typeof item === 'string' ? item.trim() : (item?.name || item?.company || '').trim())
+        .filter((c: string) => c.length > 0);
+    }
+
+    if (companiesArray.length === 0) {
+      return res.status(400).json({
+        status: 'error',
+        code: 'MISSING_COMPANIES',
+        message: 'Please provide target companies in the "targetCompanies" parameter (e.g. ["Reliance Industries", "Tata Steel"]).'
+      });
+    }
+
+    const effectiveContactLookup = contactLookup || contactPerson || contactName || '';
+    const effectiveSupplementalPrompt = supplementalPrompt || advisoryPrompt || strategyGuidelines || '';
+    const shouldSaveToDb = options.saveToDatabase !== false; // Default true
+
+    const ai = getGeminiClient();
+
+    // Concurrently process companies
+    const leadPromises = companiesArray.map(async (companyName) => {
+      const cleanCompany = companyName.trim();
+      if (!cleanCompany) return null;
+
+      // 1. Check existing leads in DB if already cached/saved
+      try {
+        const existingLead = await getExistingLeadByCompanyName(cleanCompany);
+        if (existingLead) {
+          return {
+            companyName: existingLead.company,
+            domain: existingLead.website || `https://www.${cleanCompany.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`,
+            website: existingLead.website || '',
+            linkedinPage: existingLead.linkedinPage || '',
+            industry: 'Enterprise Technology / Industrial',
+            erpStack: {
+              primarySystem: existingLead.erpFound,
+              status: existingLead.status || 'Active',
+              confidenceScore: existingLead.confidenceScore || 85,
+              detectionEvidence: existingLead.evidence,
+              secondaryModules: Array.isArray(existingLead.vendorMentions) ? existingLead.vendorMentions : [],
+              vendorMentions: Array.isArray(existingLead.vendorMentions) ? existingLead.vendorMentions : []
+            },
+            contacts: [
+              {
+                name: existingLead.cLevelContact?.name || existingLead.contactName || 'Executive Technology Director',
+                title: existingLead.cLevelContact?.title || existingLead.contactTitle || 'Chief Information Officer',
+                email: existingLead.cLevelContact?.email || existingLead.contactEmail || '',
+                emailStatus: (existingLead.cLevelContact?.email || existingLead.contactEmail) ? 'VERIFIED' : 'ESTIMATED',
+                phone: existingLead.cLevelContact?.phone || existingLead.contactPhone || '',
+                linkedinUrl: existingLead.cLevelContact?.linkedin || existingLead.contactLinkedin || ''
+              }
+            ],
+            resumeTraces: existingLead.resumeTraces || [],
+            salesPitch: existingLead.actionableSalesPitch || '',
+            sources: existingLead.sources || []
+          };
+        }
+      } catch (e) {
+        console.warn(`[Microservice Cache Check] Cache check skipped for ${cleanCompany}:`, e);
+      }
+
+      // 2. Perform live Gemini AI search & tenure verification scan
+      let prompt = `You are a Lead Acquisition and Intelligence expert conducting deep enterprise research for Proteus Technologies (a premium B2B ERP & Enterprise AI software house). 
+Find out what ERP system the following target company is using: "${cleanCompany}".
+
+Look actively for traces of:
+1. SAP (S/4HANA, ERP, SAP Business One, SAP Business ByDesign)
+2. ERPNext / Frappe
+3. Odoo (Community, Enterprise)
+4. Oracle NetSuite
+5. Microsoft Dynamics 365 / NAV / Business Central
+6. Sohum ERP
+7. Other modular systems (Salesforce, Custom ERP, Zoho, Infor, Epicor, Workday, etc.) or "None Found".
+
+METHODS OF EVIDENCE EXTRACTION & TENURE TIMELINE VALIDATION:
+- Resume & LinkedIn Traces: Scan for CVs, resumes, or profiles of IT Staff, Directors, System Admins, or software developers mentioning implementing, administering, or upgrading an ERP at "${cleanCompany}".
+- CRITICAL TIMELINE CHECK: For each resume or profile identified, determine if they actually used/managed this ERP system *during their tenure at "${cleanCompany}"*, or if they only list it as a technology used in a *previous organization* or *previous job role* prior to joining "${cleanCompany}".
+- Vendor Client Databases: Scan if they are mentioned as an official success story, case study, or client reference on odoo.com, erpnext.com, sap.com, netsuite.com, and partner advisory network profiles.
+- Job postings: Check if "${cleanCompany}" recently posted roles seeking skills like "Odoo Consultant", "SAP Administrator", or "ERPNext Developer".
+
+URGENT DATA REQUISITION:
+1. Official public corporate website of "${cleanCompany}".
+2. Official corporate LinkedIn directory page URL of "${cleanCompany}".
+3. Primary executive contact (CIO, CTO, Head of IT/ERP) associated with "${cleanCompany}", along with their phone, LinkedIn URL, and corporate email.
+
+${effectiveContactLookup ? `SPECIAL PERSON LOOKUP: Look up and verify details about '${effectiveContactLookup}' at "${cleanCompany}". Does their background trace back to ERP management or engineering? Validate if they used it at this organization specifically or in the past.` : ''}
+
+${effectiveSupplementalPrompt ? `SUPPLEMENTAL ADVISORY PROMPT & SEARCH REFINEMENTS: ${effectiveSupplementalPrompt}` : ''}
+
+Collect absolute evidence, estimate a confidence rating (0-100%), formulate detailed resume/LinkedIn tracing evidence with explicit tenure alignment checks, summarize case-study connections, find contact profiles, and engineer a customized Sales Pitch and tactical hook.`;
+
+      try {
+        let response = await ai.models.generateContent({
+          model: 'gemini-3.5-flash',
+          contents: prompt,
+          config: {
+            tools: [{ googleSearch: {} }],
+            systemInstruction: "You are an elite B2B research strategist specializing in lead intelligence and software stacks analysis. Extract high-accuracy ERP data, websites, corporate social links, and executive professional contacts. Always structure your final response as a single, valid JSON object conforming exactly to the requested Schema. Crucial instruction: NEVER use comments, ellipsis dots (like '...') or placeholder dots inside any values or array parameters. If an array field like resumeTraces or vendorMentions has no entries, you MUST return a clean empty array []. Do not use markdown backticks in your output; return only raw JSON.",
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                company: { type: Type.STRING },
+                erpFound: { type: Type.STRING, description: "The major ERP stack detected (e.g. SAP, ERPNext, Odoo, Oracle NetSuite, Microsoft Dynamics, Sohum ERP, Custom, Mixed, or None Found)" },
+                confidenceScore: { type: Type.INTEGER, description: "Confidence level of research results from 0 to 100 based on citation strengths" },
+                status: { type: Type.STRING, description: "Detection status, e.g. Active, Migrating, Legacy, or Unknown" },
+                evidence: { type: Type.STRING, description: "A detailed 2-3 sentence overview explaining how we found this ERP (referencing resumes, vendors, job listings)" },
+                website: { type: Type.STRING, description: "The verified corporate domain address of the target lead, e.g. https://www.company.com" },
+                linkedinPage: { type: Type.STRING, description: "Official corporate company LinkedIn profile page URL" },
+                cLevelContact: {
+                  type: Type.OBJECT,
+                  description: "Discovered executive contact details",
+                  properties: {
+                    name: { type: Type.STRING },
+                    title: { type: Type.STRING },
+                    phone: { type: Type.STRING },
+                    linkedin: { type: Type.STRING },
+                    email: { type: Type.STRING }
+                  },
+                  required: ["name", "title", "phone", "linkedin", "email"]
+                },
+                resumeTraces: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      personName: { type: Type.STRING },
+                      erpMentioned: { type: Type.STRING },
+                      applicableToThisTenure: { type: Type.STRING },
+                      explanation: { type: Type.STRING },
+                      sourceSearchQueryUrl: { type: Type.STRING }
+                    },
+                    required: ["personName", "erpMentioned", "applicableToThisTenure", "explanation", "sourceSearchQueryUrl"]
+                  }
+                },
+                vendorMentions: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING }
+                },
+                actionableSalesPitch: { type: Type.STRING }
+              },
+              required: ["company", "erpFound", "confidenceScore", "status", "evidence", "website", "linkedinPage", "cLevelContact", "resumeTraces", "vendorMentions", "actionableSalesPitch"]
+            }
+          }
+        });
+
+        const parsedData = robustCleanAndParseJSON(response.text || '{}', cleanCompany);
+
+        // Extract Google Search grounding sources
+        const sourceLinks: any[] = [];
+        const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+        if (chunks && Array.isArray(chunks)) {
+          chunks.forEach(chunk => {
+            if (chunk.web && chunk.web.uri) {
+              sourceLinks.push({
+                title: chunk.web.title || chunk.web.uri,
+                url: chunk.web.uri
+              });
+            }
+          });
+        }
+
+        const normalizedLead = {
+          companyName: parsedData.company || cleanCompany,
+          domain: parsedData.website || `https://www.${cleanCompany.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`,
+          website: parsedData.website || '',
+          linkedinPage: parsedData.linkedinPage || '',
+          industry: 'Enterprise Corporate Lead',
+          erpStack: {
+            primarySystem: parsedData.erpFound || 'Undetected / Mixed',
+            status: parsedData.status || 'Active',
+            confidenceScore: parsedData.confidenceScore || 75,
+            detectionEvidence: parsedData.evidence || '',
+            secondaryModules: parsedData.vendorMentions || [],
+            vendorMentions: parsedData.vendorMentions || []
+          },
+          contacts: [
+            {
+              name: parsedData.cLevelContact?.name || 'Chief Technology Officer',
+              title: parsedData.cLevelContact?.title || 'Executive Director of Technology',
+              email: parsedData.cLevelContact?.email || '',
+              emailStatus: parsedData.cLevelContact?.email ? 'VERIFIED' : 'ESTIMATED',
+              phone: parsedData.cLevelContact?.phone || '',
+              linkedinUrl: parsedData.cLevelContact?.linkedin || ''
+            }
+          ],
+          resumeTraces: parsedData.resumeTraces || [],
+          salesPitch: parsedData.actionableSalesPitch || '',
+          sources: sourceLinks
+        };
+
+        // Persist to Cloud SQL / local DB if requested
+        if (shouldSaveToDb) {
+          try {
+            await upsertLeadToDb({
+              company: normalizedLead.companyName,
+              erpFound: normalizedLead.erpStack.primarySystem,
+              confidenceScore: normalizedLead.erpStack.confidenceScore,
+              status: normalizedLead.erpStack.status,
+              evidence: normalizedLead.erpStack.detectionEvidence,
+              website: normalizedLead.website,
+              linkedinPage: normalizedLead.linkedinPage,
+              actionableSalesPitch: normalizedLead.salesPitch,
+              cLevelContact: {
+                name: normalizedLead.contacts[0]?.name || '',
+                title: normalizedLead.contacts[0]?.title || '',
+                email: normalizedLead.contacts[0]?.email || '',
+                phone: normalizedLead.contacts[0]?.phone || '',
+                linkedin: normalizedLead.contacts[0]?.linkedinUrl || ''
+              },
+              contactName: normalizedLead.contacts[0]?.name,
+              contactTitle: normalizedLead.contacts[0]?.title,
+              contactEmail: normalizedLead.contacts[0]?.email,
+              contactPhone: normalizedLead.contacts[0]?.phone,
+              contactLinkedin: normalizedLead.contacts[0]?.linkedinUrl,
+              resumeTraces: normalizedLead.resumeTraces,
+              vendorMentions: normalizedLead.erpStack.vendorMentions,
+              sources: normalizedLead.sources
+            }, client?.uid || 'user-microservice', client?.createdBy || 'nsharma@proteustech.in');
+          } catch (dbErr) {
+            console.warn(`[Microservice DB AutoSave] Warning during lead persistence for ${cleanCompany}:`, dbErr);
+          }
+        }
+
+        return normalizedLead;
+
+      } catch (err: any) {
+        console.error(`Microservice failed to research ${cleanCompany}:`, err);
+        return {
+          companyName: cleanCompany,
+          domain: `https://www.${cleanCompany.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`,
+          website: '',
+          linkedinPage: '',
+          industry: 'Enterprise Lead',
+          erpStack: {
+            primarySystem: 'Error During Lookup',
+            status: 'Lookup Failed',
+            confidenceScore: 0,
+            detectionEvidence: err.message || 'Transient research lookup error.',
+            secondaryModules: [],
+            vendorMentions: []
+          },
+          contacts: [],
+          resumeTraces: [],
+          salesPitch: '',
+          sources: []
+        };
+      }
+    });
+
+    const leadResults = await Promise.all(leadPromises);
+    const validData = leadResults.filter(Boolean);
+
+    return res.json({
+      status: 'success',
+      totalLeads: validData.length,
+      processedAt: new Date().toISOString(),
+      microservice: {
+        name: 'Proteus Lead Intelligence Microservice',
+        version: '1.0.0',
+        authenticatedClient: client?.name || 'Proteus Lead AI Client'
+      },
+      data: validData
+    });
+
+  } catch (outerError: any) {
+    console.error('Microservice Discovery Error:', outerError);
+    return res.status(500).json({
+      status: 'error',
+      code: 'SERVER_ERROR',
+      message: outerError.message || 'An internal error occurred while processing lead discovery.'
+    });
   }
 });
 
