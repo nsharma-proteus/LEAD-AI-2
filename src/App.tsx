@@ -6,6 +6,7 @@ import {
   Trash2, 
   User, 
   Users,
+  DollarSign,
   Settings, 
   Sparkles, 
   CheckCircle2, 
@@ -59,6 +60,7 @@ import PromptTrainer from './components/PromptTrainer';
 import ProspectProfile from './components/ProspectProfile';
 import UserMaster from './components/UserMaster';
 import { MicroserviceHub } from './components/MicroserviceHub';
+import { ApiCostManager } from './components/ApiCostManager';
 
 
 // Prefilled high-quality sandbox target examples to demonstrate B2B lead intelligence immediately
@@ -230,7 +232,7 @@ export default function App() {
   const isFirstRender = useRef(true);
 
   // Tab controller
-  const [activeMainTab, setActiveMainTab] = useState<'discovery' | 'tuning' | 'reports' | 'users' | 'microservice'>('discovery');
+  const [activeMainTab, setActiveMainTab] = useState<'discovery' | 'tuning' | 'reports' | 'users' | 'microservice' | 'costs'>('discovery');
 
   // Database Management states
   const [dbLeads, setDbLeads] = useState<LeadResult[]>([]);
@@ -1697,6 +1699,18 @@ ${customPromptText ? `Custom search focus prompt: ${customPromptText}` : ''}
             <span>Microservice API Gateway</span>
           </button>
 
+          <button
+            onClick={() => setActiveMainTab('costs')}
+            className={`px-4 py-2 text-xs font-bold rounded-lg flex items-center gap-2 transition-all cursor-pointer ${
+              activeMainTab === 'costs'
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/40'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850'
+            }`}
+          >
+            <DollarSign size={13} className="text-emerald-400" />
+            <span>API Usage & Costs</span>
+          </button>
+
           {sessionUser?.role === 'admin' && (
             <button
               onClick={() => setActiveMainTab('users')}
@@ -1755,6 +1769,10 @@ ${customPromptText ? `Custom search focus prompt: ${customPromptText}` : ''}
         ) : activeMainTab === 'microservice' ? (
           <div className="flex-1 min-h-0 h-full w-full overflow-y-auto p-4 md:p-6">
             <MicroserviceHub idToken={authIdToken} sessionEmail={sessionUser?.email} />
+          </div>
+        ) : activeMainTab === 'costs' ? (
+          <div className="flex-1 min-h-0 h-full w-full overflow-y-auto p-4 md:p-6">
+            <ApiCostManager idToken={authIdToken} sessionEmail={sessionUser?.email} />
           </div>
         ) : activeMainTab === 'reports' ? (
           <div className="flex-1 min-h-0 h-full w-full overflow-y-auto p-4 md:p-6 bg-slate-900/10 grid grid-cols-1 lg:grid-cols-12 gap-6">

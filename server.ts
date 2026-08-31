@@ -25,6 +25,10 @@ import {
   validateApiKey,
   ApiKeyRecord
 } from './src/db/apikeys.ts';
+import {
+  logApiUsage,
+  getUsageAnalytics
+} from './src/db/apiusage.ts';
 
 dotenv.config();
 
@@ -1060,6 +1064,10 @@ function robustCleanAndParseJSON(rawText: string, companyName: string): any {
 
 // API: Research multiple companies for ERP usage
 app.post('/api/leads/research', async (req, res) => {
+  const reqStartTime = performance.now();
+  const sessionUser = (req as any).sessionUser;
+  const userEmail = sessionUser?.email || req.headers['x-user-email'] as string || 'nsharma@proteustech.in';
+  
   try {
     const { companies, contactName, strategyGuidelines, customPrompts, trainingExamples } = req.body;
     
@@ -1246,8 +1254,39 @@ Collect absolute evidence, estimate a confidence rating (0-100%), formulate deta
     const researchResults = await Promise.all(researchPromises);
     const results = researchResults.filter(r => r !== null);
 
+    const latencyMs = Math.round(performance.now() - reqStartTime);
+    const validCount = results.filter(r => r.success).length;
+
+    // Log API usage event
+    try {
+      await logApiUsage({
+        userEmail,
+        source: 'web_ui',
+        endpoint: '/api/leads/research',
+        companiesSearched: companies.map((c: any) => typeof c === 'string' ? c : (c?.name || '')).filter(Boolean),
+        modelUsed: 'gemini-3.5-flash',
+        latencyMs,
+        status: 'SUCCESS'
+      });
+    } catch (logErr) {
+      console.warn('[Usage Logger] Failed to record usage:', logErr);
+    }
+
     res.json({ results });
   } catch (error: any) {
+    const latencyMs = Math.round(performance.now() - reqStartTime);
+    try {
+      await logApiUsage({
+        userEmail,
+        source: 'web_ui',
+        endpoint: '/api/leads/research',
+        companiesSearched: Array.isArray(req.body?.companies) ? req.body.companies : [],
+        modelUsed: 'gemini-3.5-flash',
+        latencyMs,
+        status: 'ERROR',
+        errorMessage: error.message
+      });
+    } catch {}
     console.error('API Error:', error);
     res.status(500).json({ error: error.message || 'Failed to complete research due to backend errors.' });
   }
@@ -1502,8 +1541,11 @@ app.post('/api/v1/keys/revoke', authenticateMicroservice, async (req, res) => {
 
 // Primary Microservice Lead Discovery Endpoint
 app.post('/api/v1/leads/discover', authenticateMicroservice, async (req, res) => {
+  const reqStartTime = performance.now();
+  const client = (req as any).microserviceClient;
+  const userEmail = client?.createdBy || 'microservice:' + (client?.name || 'Client');
+
   try {
-    const client = (req as any).microserviceClient;
     let { 
       targetCompanies, 
       companies, 
@@ -1779,6 +1821,25 @@ Collect absolute evidence, estimate a confidence rating (0-100%), formulate deta
     const leadResults = await Promise.all(leadPromises);
     const validData = leadResults.filter(Boolean);
 
+    const latencyMs = Math.round(performance.now() - reqStartTime);
+
+    // Record API usage
+    try {
+      await logApiUsage({
+        userEmail: client?.createdBy || `microservice:${client?.name || 'Client'}`,
+        userName: client?.name || 'Microservice Client',
+        apiKeyName: client?.name || 'Microservice API Key',
+        source: 'microservice_api',
+        endpoint: '/api/v1/leads/discover',
+        companiesSearched: companiesArray,
+        modelUsed: 'gemini-3.5-flash',
+        latencyMs,
+        status: 'SUCCESS'
+      });
+    } catch (logErr) {
+      console.warn('[Usage Logger] Failed to record microservice usage:', logErr);
+    }
+
     return res.json({
       status: 'success',
       totalLeads: validData.length,
@@ -1792,12 +1853,53 @@ Collect absolute evidence, estimate a confidence rating (0-100%), formulate deta
     });
 
   } catch (outerError: any) {
+    const latencyMs = Math.round(performance.now() - reqStartTime);
+    try {
+      await logApiUsage({
+        userEmail: client?.createdBy || `microservice:${client?.name || 'Client'}`,
+        userName: client?.name,
+        apiKeyName: client?.name,
+        source: 'microservice_api',
+        endpoint: '/api/v1/leads/discover',
+        companiesSearched: [],
+        modelUsed: 'gemini-3.5-flash',
+        latencyMs,
+        status: 'ERROR',
+        errorMessage: outerError.message
+      });
+    } catch {}
     console.error('Microservice Discovery Error:', outerError);
     return res.status(500).json({
       status: 'error',
       code: 'SERVER_ERROR',
       message: outerError.message || 'An internal error occurred while processing lead discovery.'
     });
+  }
+});
+
+// ============================================================================
+// API USAGE & COST MANAGEMENT ENDPOINTS
+// ============================================================================
+
+// Get aggregated and filtered usage analytics (Admin or Authenticated User)
+app.get('/api/analytics/usage', async (req, res) => {
+  try {
+    const { userEmail, startDate, endDate, source } = req.query;
+    
+    const analytics = await getUsageAnalytics({
+      userEmail: userEmail as string,
+      startDate: startDate as string,
+      endDate: endDate as string,
+      source: (source as any) || 'all'
+    });
+
+    res.json({
+      status: 'success',
+      analytics
+    });
+  } catch (err: any) {
+    console.error('Failed to get usage analytics:', err);
+    res.status(500).json({ error: err.message || 'Failed to fetch usage analytics' });
   }
 });
 
