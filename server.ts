@@ -1141,7 +1141,7 @@ Collect absolute evidence, estimate a confidence rating (0-100%), formulate deta
         while (attempts < maxAttempts) {
           try {
             response = await ai.models.generateContent({
-              model: 'gemini-3.5-flash',
+              model: 'gemini-2.5-flash',
               contents: prompt,
               config: {
                 // Enable search grounding to obtain real, actual digital data
@@ -1264,7 +1264,7 @@ Collect absolute evidence, estimate a confidence rating (0-100%), formulate deta
         source: 'web_ui',
         endpoint: '/api/leads/research',
         companiesSearched: companies.map((c: any) => typeof c === 'string' ? c : (c?.name || '')).filter(Boolean),
-        modelUsed: 'gemini-3.5-flash',
+        modelUsed: 'gemini-2.5-flash',
         latencyMs,
         status: 'SUCCESS'
       });
@@ -1281,7 +1281,7 @@ Collect absolute evidence, estimate a confidence rating (0-100%), formulate deta
         source: 'web_ui',
         endpoint: '/api/leads/research',
         companiesSearched: Array.isArray(req.body?.companies) ? req.body.companies : [],
-        modelUsed: 'gemini-3.5-flash',
+        modelUsed: 'gemini-2.5-flash',
         latencyMs,
         status: 'ERROR',
         errorMessage: error.message
@@ -1661,7 +1661,7 @@ Collect absolute evidence, estimate a confidence rating (0-100%), formulate deta
 
       try {
         let response = await ai.models.generateContent({
-          model: 'gemini-3.5-flash',
+          model: 'gemini-2.5-flash',
           contents: prompt,
           config: {
             tools: [{ googleSearch: {} }],
@@ -1832,7 +1832,7 @@ Collect absolute evidence, estimate a confidence rating (0-100%), formulate deta
         source: 'microservice_api',
         endpoint: '/api/v1/leads/discover',
         companiesSearched: companiesArray,
-        modelUsed: 'gemini-3.5-flash',
+        modelUsed: 'gemini-2.5-flash',
         latencyMs,
         status: 'SUCCESS'
       });
@@ -1862,7 +1862,7 @@ Collect absolute evidence, estimate a confidence rating (0-100%), formulate deta
         source: 'microservice_api',
         endpoint: '/api/v1/leads/discover',
         companiesSearched: [],
-        modelUsed: 'gemini-3.5-flash',
+        modelUsed: 'gemini-2.5-flash',
         latencyMs,
         status: 'ERROR',
         errorMessage: outerError.message

@@ -1188,6 +1188,9 @@ ${customPromptText ? `Custom search focus prompt: ${customPromptText}` : ''}
             });
           } else {
             failedCount++;
+            if (row.error) {
+              console.warn(`Lead scan failure for ${row.company}:`, row.error);
+            }
           }
         });
 
@@ -1213,7 +1216,8 @@ ${customPromptText ? `Custom search focus prompt: ${customPromptText}` : ''}
           }
           setSuccessMessage(msg);
         } else {
-          setErrorMessage("Failed to locate any explicit ERP details for listed entities. Please verify names or check API secrets.");
+          const firstError = rawData.results?.find((r: any) => r.error)?.error;
+          setErrorMessage(firstError ? `Research failed: ${firstError}` : "Failed to locate any explicit ERP details for listed entities. Please verify names or check API secrets.");
         }
       } else {
         throw new Error("Invalid payload format received from the tech scanner.");
