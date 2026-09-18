@@ -1062,6 +1062,45 @@ function robustCleanAndParseJSON(rawText: string, companyName: string): any {
   }
 }
 
+// Dynamic Gemini Model Resolver with multi-model fallback resiliency
+async function generateWithModelFallback(ai: any, requestPayload: { contents: any; config: any }) {
+  const candidateModels = [
+    process.env.GEMINI_MODEL,
+    'gemini-3.8-flash',
+    'gemini-3.7-flash',
+    'gemini-3.6-flash',
+  ].filter(Boolean) as string[];
+
+  const uniqueModels = Array.from(new Set(candidateModels));
+  let lastError: any = null;
+
+  for (const modelName of uniqueModels) {
+    try {
+      const response = await ai.models.generateContent({
+        model: modelName,
+        contents: requestPayload.contents,
+        config: requestPayload.config,
+      });
+      return { response, modelUsed: modelName };
+    } catch (err: any) {
+      lastError = err;
+      const errMsg = err.message || '';
+      const isModelUnavailable = err.status === 404 || 
+                                  errMsg.includes('not found') || 
+                                  errMsg.includes('is no longer available') ||
+                                  errMsg.includes('NOT_FOUND') ||
+                                  errMsg.includes('404');
+      if (isModelUnavailable) {
+        console.warn(`[Model Fallback] Candidate model '${modelName}' is unavailable (${errMsg}). Trying next candidate...`);
+        continue;
+      }
+      // If it's a different error, throw immediately (e.g. rate limit, auth)
+      throw err;
+    }
+  }
+  throw lastError || new Error('All candidate models failed to generate research.');
+}
+
 // API: Research multiple companies for ERP usage
 app.post('/api/leads/research', async (req, res) => {
   const reqStartTime = performance.now();
@@ -1135,13 +1174,13 @@ ${trainingExamples && Array.isArray(trainingExamples) && trainingExamples.length
 Collect absolute evidence, estimate a confidence rating (0-100%), formulate detailed resume/LinkedIn tracing evidence with explicit tenure alignment checks, summarize case-study connections, find contact profiles, and engineer a customized Sales Pitch and tactical hook so Proteus Technologies' directors can reach out with customized ERP upgrading, AI copilot integration, or migration offerings.`;
 
       try {
-        let response;
+        let response: any;
+        let actualModelUsed = 'gemini-3.7-flash';
         let attempts = 0;
         const maxAttempts = 2;
         while (attempts < maxAttempts) {
           try {
-            response = await ai.models.generateContent({
-              model: 'gemini-2.5-flash',
+            const genResult = await generateWithModelFallback(ai, {
               contents: prompt,
               config: {
                 // Enable search grounding to obtain real, actual digital data
@@ -1196,6 +1235,8 @@ Collect absolute evidence, estimate a confidence rating (0-100%), formulate deta
                 }
               }
             });
+            response = genResult.response;
+            actualModelUsed = genResult.modelUsed;
             break; // Succeeded! Break out of loop.
           } catch (innerErr: any) {
             attempts++;
@@ -1264,7 +1305,7 @@ Collect absolute evidence, estimate a confidence rating (0-100%), formulate deta
         source: 'web_ui',
         endpoint: '/api/leads/research',
         companiesSearched: companies.map((c: any) => typeof c === 'string' ? c : (c?.name || '')).filter(Boolean),
-        modelUsed: 'gemini-2.5-flash',
+        modelUsed: 'gemini-3.7-flash',
         latencyMs,
         status: 'SUCCESS'
       });
@@ -1281,7 +1322,7 @@ Collect absolute evidence, estimate a confidence rating (0-100%), formulate deta
         source: 'web_ui',
         endpoint: '/api/leads/research',
         companiesSearched: Array.isArray(req.body?.companies) ? req.body.companies : [],
-        modelUsed: 'gemini-2.5-flash',
+        modelUsed: 'gemini-3.7-flash',
         latencyMs,
         status: 'ERROR',
         errorMessage: error.message
@@ -1660,8 +1701,7 @@ ${effectiveSupplementalPrompt ? `SUPPLEMENTAL ADVISORY PROMPT & SEARCH REFINEMEN
 Collect absolute evidence, estimate a confidence rating (0-100%), formulate detailed resume/LinkedIn tracing evidence with explicit tenure alignment checks, summarize case-study connections, find contact profiles, and engineer a customized Sales Pitch and tactical hook.`;
 
       try {
-        let response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+        const { response, modelUsed } = await generateWithModelFallback(ai, {
           contents: prompt,
           config: {
             tools: [{ googleSearch: {} }],
@@ -1832,7 +1872,7 @@ Collect absolute evidence, estimate a confidence rating (0-100%), formulate deta
         source: 'microservice_api',
         endpoint: '/api/v1/leads/discover',
         companiesSearched: companiesArray,
-        modelUsed: 'gemini-2.5-flash',
+        modelUsed: 'gemini-3.7-flash',
         latencyMs,
         status: 'SUCCESS'
       });
@@ -1862,7 +1902,7 @@ Collect absolute evidence, estimate a confidence rating (0-100%), formulate deta
         source: 'microservice_api',
         endpoint: '/api/v1/leads/discover',
         companiesSearched: [],
-        modelUsed: 'gemini-2.5-flash',
+        modelUsed: 'gemini-3.7-flash',
         latencyMs,
         status: 'ERROR',
         errorMessage: outerError.message
