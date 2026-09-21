@@ -5,6 +5,8 @@ import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
+import { db } from './src/db/index.ts';
+import { sql } from 'drizzle-orm';
 import { seedDefaultLeads, getAllLeadsFromDb, upsertLeadToDb, executeReportingQuery, getExistingLeadByCompanyName } from './src/db/helpers.ts';
 import { adminAuth } from './src/lib/firebase-admin.ts';
 import { 
@@ -1413,14 +1415,34 @@ async function authenticateMicroservice(req: express.Request, res: express.Respo
   });
 }
 
-// Microservice Health & Spec
-app.get('/api/v1/health', (req, res) => {
+// Microservice Health & Database Diagnostics
+app.get(['/api/health', '/api/v1/health'], async (req, res) => {
+  let dbStatus = {
+    connected: false,
+    storageMode: 'Local File Fallback (Volatile / Ephemeral on Cloud Run)',
+    warning: 'DATABASE_URL or SQL credentials not configured or reachable. Registered users and passwords will be lost when Cloud Run restarts or scales to zero instances.',
+    error: undefined as string | undefined
+  };
+
+  try {
+    await db.execute(sql`SELECT 1`);
+    dbStatus = {
+      connected: true,
+      storageMode: 'Cloud SQL / PostgreSQL (Persistent)',
+      warning: undefined as any,
+      error: undefined
+    };
+  } catch (err: any) {
+    dbStatus.error = err.message || String(err);
+  }
+
   res.json({
     status: 'healthy',
     service: 'Proteus Lead Intelligence Microservice',
     version: '1.0.0',
     timestamp: new Date().toISOString(),
-    engine: 'Gemini Generative Lead & ERP Stack Grounding'
+    engine: 'Gemini Generative Lead & ERP Stack Grounding',
+    database: dbStatus
   });
 });
 
