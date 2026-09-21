@@ -1,0 +1,35 @@
+[
+  {
+    "id": 1,
+    "uid": "sandbox_system",
+    "email": "system@proteustech.in",
+    "created_at": "2026-06-11T09:47:23.782Z",
+    "password_hash": null,
+    "salt": null,
+    "name": "system",
+    "role": "user",
+    "updated_at": "2026-09-21T10:22:49.718Z"
+  },
+  {
+    "id": 1053,
+    "uid": "b80ROkprPQVKcHaK4vAjQYjtlzx1",
+    "email": "brijesh.jadav@proteustech.in",
+    "created_at": "2026-07-30T07:20:27.859Z",
+    "password_hash": null,
+    "salt": null,
+    "name": null,
+    "role": "user",
+    "updated_at": "2026-08-28T10:25:13.162Z"
+  },
+  {
+    "id": 2,
+    "uid": "user-admin-master",
+    "email": "nsharma@proteustech.in",
+    "created_at": "2026-06-12T06:26:25.185Z",
+    "password_hash": "e4608875737cb30a8e5c4888b363cf17098ad60de673042e92dcf97d0656a90948bbd62a0be30341d212eafa8d3f210ef179dd68740bfa05556845ae8888e43a",
+    "salt": "1740bfb55d04ecdc1b545c18d7de7217",
+    "name": "nsharma",
+    "role": "admin",
+    "updated_at": "2026-09-21T10:21:15.539Z"
+  }
+]

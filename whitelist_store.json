@@ -1,0 +1,20 @@
+[
+  {
+    "id": 2,
+    "email_or_domain": "proteustech.in",
+    "role": "user",
+    "created_at": "2026-06-13T04:55:12.274Z"
+  },
+  {
+    "id": 1,
+    "email_or_domain": "nsharma@proteustech.in",
+    "role": "admin",
+    "created_at": "2026-06-13T04:55:09.679Z"
+  },
+  {
+    "id": 5,
+    "email_or_domain": "brijesh.jadav@proteustech.in",
+    "role": "user",
+    "created_at": "2026-07-30T07:14:32.513Z"
+  }
+]
