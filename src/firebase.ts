@@ -12,9 +12,9 @@ import {
 // Firebase configuration for Proteus Lead Platform
 const firebaseConfig = {
   apiKey: ((import.meta as any).env?.VITE_FIREBASE_API_KEY) || "AIzaSyAMs4XZAQqd7Twx_K-otvSvAzaI77NH_Js",
-  projectId: ((import.meta as any).env?.VITE_FIREBASE_PROJECT_ID) || "proteuslead",
-  authDomain: ((import.meta as any).env?.VITE_FIREBASE_AUTH_DOMAIN) || "proteuslead.firebaseapp.com",
-  storageBucket: ((import.meta as any).env?.VITE_FIREBASE_STORAGE_BUCKET) || "proteuslead.appspot.com",
+  projectId: ((import.meta as any).env?.VITE_FIREBASE_PROJECT_ID) || "gen-lang-client-0857888688",
+  authDomain: ((import.meta as any).env?.VITE_FIREBASE_AUTH_DOMAIN) || "gen-lang-client-0857888688.firebaseapp.com",
+  storageBucket: ((import.meta as any).env?.VITE_FIREBASE_STORAGE_BUCKET) || "gen-lang-client-0857888688.firebasestorage.app",
   appId: ((import.meta as any).env?.VITE_FIREBASE_APP_ID) || "1:451986737678:web:5949d4f76369eae8384a5f"
 };
 

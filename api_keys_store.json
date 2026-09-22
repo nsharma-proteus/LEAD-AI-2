@@ -1,0 +1,13 @@
+[
+  {
+    "id": 1,
+    "key": "proteus_live_sec_master_ai_2026",
+    "name": "Proteus Lead AI Master Microservice Key",
+    "role": "service",
+    "status": "active",
+    "createdBy": "nsharma@proteustech.in",
+    "createdAt": "2026-09-22T05:29:51.811Z",
+    "lastUsedAt": null,
+    "usageCount": 0
+  }
+]
