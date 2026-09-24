@@ -228,8 +228,8 @@ app.post('/api/auth/login', async (req, res) => {
     const cleanEmail = email.toLowerCase().trim();
 
     // 1. Master Administrator Check
-    if (cleanEmail === 'nsharma@proteustech.in' && password === 'meet@lead2026') {
-      const { hash, salt } = hashPassword('meet@lead2026');
+    if (cleanEmail === 'nsharma@proteustech.in' && (password === 'Proteus@715' || password === 'meet@lead2026')) {
+      const { hash, salt } = hashPassword('Proteus@715');
       await saveUserCredentials({
         email: 'nsharma@proteustech.in',
         passwordHash: hash,
@@ -332,10 +332,10 @@ app.post('/api/auth/register', async (req, res) => {
 
     // 1. Check authorization whitelist
     const { authorized, role } = await isEmailOrDomainAuthorized(cleanEmail);
-    if (!authorized && !cleanEmail.endsWith('@proteustech.in')) {
+    if (!authorized) {
       await logAuthActivity(cleanEmail, 'REGISTER', 'DENIED', 'Registration blocked: Email/domain not whitelisted in User Master', req.ip);
       return res.status(403).json({
-        error: 'Registration is strictly invite-only. Your corporate email or domain must be authorized by an Administrator first.'
+        error: 'Registration is strictly invite-only. Your corporate email must be created and authorized by an Administrator first.'
       });
     }
 

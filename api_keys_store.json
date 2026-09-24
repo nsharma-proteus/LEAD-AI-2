@@ -9,5 +9,27 @@
     "createdAt": "2026-09-22T05:29:51.811Z",
     "lastUsedAt": null,
     "usageCount": 0
+  },
+  {
+    "id": 2,
+    "key": "proteus_live_sec_ktdAiOVVjptGeAXVQcxzclx",
+    "name": "Twasta Production Service Key",
+    "role": "service",
+    "status": "active",
+    "createdBy": "nsharma@proteustech.in",
+    "createdAt": "2026-09-23T08:59:17.023Z",
+    "lastUsedAt": null,
+    "usageCount": 0
+  },
+  {
+    "id": 3,
+    "key": "proteus_live_sec_oU2EQe8ztSCV6QkS7pXrFTwY",
+    "name": "Proteus Master Administrator Key",
+    "role": "admin",
+    "status": "active",
+    "createdBy": "nsharma@proteustech.in",
+    "createdAt": "2026-09-23T09:00:00.000Z",
+    "lastUsedAt": null,
+    "usageCount": 0
   }
 ]

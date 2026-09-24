@@ -27,22 +27,51 @@ const DEFAULT_API_KEYS: ApiKeyRecord[] = [
     createdAt: new Date().toISOString(),
     lastUsedAt: null,
     usageCount: 0
+  },
+  {
+    id: 2,
+    key: 'proteus_live_sec_ktdAiOVVjptGeAXVQcxzclx',
+    name: 'Twasta Production Service Key',
+    role: 'service',
+    status: 'active',
+    createdBy: 'nsharma@proteustech.in',
+    createdAt: new Date().toISOString(),
+    lastUsedAt: null,
+    usageCount: 0
+  },
+  {
+    id: 3,
+    key: 'proteus_live_sec_oU2EQe8ztSCV6QkS7pXrFTwY',
+    name: 'Proteus Master Administrator Key',
+    role: 'admin',
+    status: 'active',
+    createdBy: 'nsharma@proteustech.in',
+    createdAt: new Date().toISOString(),
+    lastUsedAt: null,
+    usageCount: 0
   }
 ];
 
 function readKeysFile(): ApiKeyRecord[] {
+  let keys = [...DEFAULT_API_KEYS];
   try {
     if (fs.existsSync(API_KEYS_STORE_PATH)) {
       const content = fs.readFileSync(API_KEYS_STORE_PATH, 'utf-8');
       const parsed = JSON.parse(content);
       if (Array.isArray(parsed) && parsed.length > 0) {
+        // Merge with DEFAULT_API_KEYS ensuring defaults are never lost
+        for (const defaultKey of DEFAULT_API_KEYS) {
+          if (!parsed.some((p: ApiKeyRecord) => p.key === defaultKey.key)) {
+            parsed.push(defaultKey);
+          }
+        }
         return parsed;
       }
     }
   } catch (err) {
     console.error('Error reading api_keys_store.json:', err);
   }
-  return DEFAULT_API_KEYS;
+  return keys;
 }
 
 function writeKeysFile(keys: ApiKeyRecord[]) {

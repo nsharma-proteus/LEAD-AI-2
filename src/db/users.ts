@@ -41,7 +41,6 @@ const AUTH_LOGS_STORE_PATH = path.join(process.cwd(), 'auth_logs_store.json');
 // Default initial whitelist entries
 const DEFAULT_WHITELIST: WhitelistEntry[] = [
   { id: 1, emailOrDomain: 'nsharma@proteustech.in', role: 'admin', createdAt: new Date('2026-06-13T04:55:09.679Z') },
-  { id: 2, emailOrDomain: 'proteustech.in', role: 'admin', createdAt: new Date('2026-06-13T04:55:12.274Z') },
   { id: 5, emailOrDomain: 'brijesh.jadav@proteustech.in', role: 'user', createdAt: new Date('2026-07-30T07:14:32.513Z') }
 ];
 
